@@ -1,0 +1,319 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:ignore="ContentDescription"
+    tools:context="ScreenJoystickInterface"
+    android:orientation="horizontal">
+
+    <uniandes.disc.imagine.android_hri.mobile_interaction.utils.MjpegView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/mjpegView"
+        android:visibility="visible" />
+
+    <org.ros.android.view.RosImageView
+        android:id="@+id/streamingView"
+        android:src="@drawable/loading_wide"
+        android:layout_height="match_parent"
+        android:layout_width="match_parent"
+        android:visibility="visible" />
+
+    <ImageView
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:src="@drawable/target_cool"
+        android:id="@+id/targetView"
+        android:layout_centerVertical="true"
+        android:layout_alignParentRight="true"
+        android:layout_marginRight="120dp"
+        android:visibility="invisible" />
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <uniandes.disc.imagine.android_hri.mobile_interaction.widget.VerticalSliderView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:id="@+id/sliderView"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentLeft="true"
+            android:layout_above="@+id/virtual_joystick_pos"
+            android:layout_alignRight="@+id/virtual_joystick_pos"
+            android:gravity="center_vertical|center_horizontal"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="10dp"
+            android:layout_marginRight="30dp"
+            android:layout_marginLeft="30dp"
+            android:visibility="gone" />
+
+        <uniandes.disc.imagine.android_hri.mobile_interaction.widget.CustomVirtualJoystickView
+            android:id="@+id/virtual_joystick_pos"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentLeft="true"
+            android:layout_marginLeft="5dp"
+            android:layout_marginBottom="5dp"
+            android:alpha="0.5" />
+
+        <uniandes.disc.imagine.android_hri.mobile_interaction.widget.CustomVirtualJoystickView
+            android:id="@+id/virtual_joystick_rot"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentRight="true"
+            android:visibility="invisible"
+            android:layout_marginRight="5dp"
+            android:layout_marginBottom="5dp"
+            android:alpha="0.5" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:text="@string/grasping_open"
+            android:id="@+id/rotationTextView"
+            android:layout_alignTop="@+id/virtual_joystick_rot"
+            android:layout_alignLeft="@+id/virtual_joystick_rot"
+            android:layout_alignParentRight="true"
+            android:gravity="center_vertical|center_horizontal"
+            android:textColor="#ffd9d9d9"
+            android:visibility="invisible"
+            android:layout_marginRight="5dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:text="@string/position_control"
+            android:id="@+id/positionTextView"
+            android:gravity="center_vertical|center_horizontal"
+            android:textColor="#ffd9d9d9"
+            android:layout_gravity="center_vertical"
+            android:layout_alignTop="@+id/virtual_joystick_pos"
+            android:layout_alignParentLeft="true"
+            android:layout_alignRight="@+id/virtual_joystick_pos"
+            android:layout_marginLeft="5dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:text="@string/view"
+            android:id="@+id/camaraControl"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentRight="true"
+            android:layout_marginTop="5dp"
+            android:layout_alignLeft="@+id/virtual_joystick_rot"
+            android:gravity="center_horizontal" />
+
+        <ToggleButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/toggleCamera1"
+            android:textOn="@string/camera1_name"
+            android:textOff="@string/camera1_name"
+            android:checked="true"
+            android:layout_alignLeft="@+id/virtual_joystick_rot"
+            android:layout_below="@+id/camaraControl"
+            android:layout_alignParentRight="true"
+            android:layout_marginTop="5dp" />
+
+        <ToggleButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/toggleCamera2"
+            android:textOn="@string/camera2_name"
+            android:textOff="@string/camera2_name"
+            android:checked="false"
+            android:layout_below="@+id/toggleCamera1"
+            android:layout_alignParentRight="true"
+            android:layout_alignLeft="@+id/toggleCamera1"
+            android:layout_marginTop="5dp"
+            android:enabled="false" />
+
+
+        <ToggleButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/toggleCamera3"
+            android:textOn="@string/camera3_name"
+            android:textOff="@string/camera3_name"
+            android:checked="false"
+            android:layout_below="@+id/toggleCamera2"
+            android:layout_alignParentRight="true"
+            android:layout_alignLeft="@+id/toggleCamera1"
+            android:layout_marginTop="5dp"
+            android:enabled="false" />
+
+
+        <ToggleButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/toggleCamera4"
+            android:textOn="@string/camera4_name"
+            android:textOff="@string/camera4_name"
+            android:checked="false"
+            android:layout_below="@+id/toggleCamera3"
+            android:layout_alignParentRight="true"
+            android:layout_alignLeft="@+id/toggleCamera1"
+            android:layout_marginTop="5dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:text="@string/device"
+            android:id="@+id/deviceControl"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentLeft="true"
+            android:layout_marginTop="5dp"
+            android:layout_marginLeft="2dp"
+            android:layout_alignRight="@+id/virtual_joystick_pos"
+            android:gravity="center_horizontal" />
+
+        <ImageView
+            android:layout_width="30dp"
+            android:layout_height="45dp"
+            android:id="@+id/imageSimulator"
+            android:src="@drawable/sim_control"
+            android:layout_below="@+id/deviceControl"
+            android:layout_alignLeft="@+id/deviceControl"
+            android:layout_marginTop="5dp"/>
+
+        <ToggleButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textOn="@string/sim_control"
+            android:textOff="@string/sim_control"
+            android:checked="true"
+            android:id="@+id/toggleSimulatorControl"
+            android:layout_toRightOf="@+id/imageSimulator"
+            android:layout_alignTop="@+id/imageSimulator"
+            android:layout_alignBottom="@+id/imageSimulator"
+            android:layout_alignRight="@+id/virtual_joystick_pos"/>
+
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="45dp"
+            android:id="@+id/imageP3DX1"
+            android:src="@drawable/p3dx1_control"
+            android:layout_below="@+id/imageSimulator"
+            android:layout_alignLeft="@+id/imageSimulator"
+            android:layout_alignRight="@+id/imageSimulator"
+            android:layout_marginTop="5dp"/>
+
+        <ToggleButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textOn="@string/p3dx1_control"
+            android:textOff="@string/p3dx1_control"
+            android:checked="false"
+            android:id="@+id/toggleP3DX1Control"
+            android:layout_toRightOf="@+id/imageP3DX1"
+            android:layout_alignTop="@+id/imageP3DX1"
+            android:layout_alignBottom="@+id/imageP3DX1"
+            android:layout_alignRight="@+id/virtual_joystick_pos"/>
+
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="45dp"
+            android:id="@+id/imageP3DX2"
+            android:src="@drawable/p3dx2_control"
+            android:layout_below="@+id/imageP3DX1"
+            android:layout_alignLeft="@+id/imageP3DX1"
+            android:layout_alignRight="@+id/imageP3DX1"
+            android:layout_marginTop="5dp"
+            android:visibility="gone" />
+
+        <ToggleButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textOn="@string/p3dx2_control"
+            android:textOff="@string/p3dx2_control"
+            android:checked="false"
+            android:id="@+id/toggleP3DX2Control"
+            android:layout_toRightOf="@+id/imageP3DX2"
+            android:layout_alignTop="@+id/imageP3DX2"
+            android:layout_alignBottom="@+id/imageP3DX2"
+            android:layout_alignRight="@+id/virtual_joystick_pos"
+            android:visibility="gone" />
+
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="45dp"
+            android:id="@+id/imageAll"
+            android:src="@drawable/all_control"
+            android:layout_below="@+id/imageP3DX2"
+            android:layout_alignLeft="@+id/imageP3DX2"
+            android:layout_alignRight="@+id/imageP3DX2"
+            android:layout_marginTop="5dp"
+            android:visibility="gone" />
+
+        <ToggleButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textOn="@string/all_control"
+            android:textOff="@string/all_control"
+            android:checked="false"
+            android:id="@+id/toggleAllControl"
+            android:layout_toRightOf="@+id/imageAll"
+            android:layout_alignTop="@+id/imageAll"
+            android:layout_alignBottom="@+id/imageAll"
+            android:layout_alignRight="@+id/virtual_joystick_pos"
+            android:visibility="gone" />
+
+        <ToggleButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textOn="@string/emergency_on"
+            android:textOff="@string/emergency_off"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:id="@+id/emergencyButton"
+            android:layout_alignParentBottom="true"
+            android:layout_centerHorizontal="true"
+            android:checked="false"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="20dp"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:text="@string/grasping_open"
+            android:id="@+id/scrollTextView"
+            android:layout_below="@+id/toggleCamera3"
+            android:layout_alignParentRight="true"
+            android:layout_alignLeft="@id/virtual_joystick_rot"
+            android:gravity="center_vertical|center_horizontal"
+            android:textColor="#ff797979"
+            android:visibility="visible"
+            android:layout_marginRight="5dp" />
+
+        <uniandes.disc.imagine.android_hri.mobile_interaction.widget.ScrollerView
+            android:layout_width="60dp"
+            android:layout_height="wrap_content"
+            android:id="@+id/scrollerView"
+            android:alpha="0.6"
+            android:layout_below="@+id/scrollTextView"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentRight="true"
+            android:layout_marginRight="20dp"
+            android:layout_marginBottom="3dp"
+            android:visibility="visible" />
+
+    </RelativeLayout>
+
+    <ImageView
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:src="@drawable/target_cool"
+        android:id="@+id/targetCenter"
+        android:layout_centerVertical="true"
+        android:layout_centerHorizontal="true"
+        android:alpha="0.7"
+        android:visibility="invisible" />
+
+</RelativeLayout>
