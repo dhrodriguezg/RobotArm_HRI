@@ -27,6 +27,7 @@ import sensor_msgs.CompressedImage;
 import uniandes.disc.imagine.robotarm_app.teleop.MainActivity;
 import uniandes.disc.imagine.robotarm_app.teleop.R;
 import uniandes.disc.imagine.robotarm_app.teleop.topic.BooleanTopic;
+import uniandes.disc.imagine.robotarm_app.teleop.topic.Float32Topic;
 import uniandes.disc.imagine.robotarm_app.teleop.topic.Int32Topic;
 import uniandes.disc.imagine.robotarm_app.teleop.topic.TwistTopic;
 import uniandes.disc.imagine.robotarm_app.teleop.utils.AndroidNode;
@@ -50,10 +51,10 @@ public class ScreenJoystickInterface extends RosActivity {
     private ToggleButton toggleCamera2;
     private ToggleButton toggleCamera3;
     private ToggleButton toggleCamera4;
-    private ToggleButton toggleAllControl;
-    private ToggleButton toggleSimulatorControl;
-    private ToggleButton toggleP3DX1Control;
-    private ToggleButton toggleP3DX2Control;
+    //private ToggleButton toggleAllControl;
+    //private ToggleButton toggleSimulatorControl;
+    //private ToggleButton toggleP3DX1Control;
+    //private ToggleButton toggleP3DX2Control;
 
     private AndroidNode androidNode;
     private BooleanTopic emergencyTopic;
@@ -61,7 +62,9 @@ public class ScreenJoystickInterface extends RosActivity {
     private Int32Topic cameraNumberTopic;
     private Int32Topic cameraPTZTopic;
     private Int32Topic p3dxNumberTopic;
+    private Float32Topic graspTopic;
     private TwistTopic velocityTopic;
+    private TwistTopic arm_navTopic;
 
     private ImageView targetImage;
     private TextView textPTZ;
@@ -98,14 +101,18 @@ public class ScreenJoystickInterface extends RosActivity {
         textPTZ = (TextView) findViewById(R.id.rotationTextView);
         joystickPositionNodeMain = (CustomVirtualJoystickView) findViewById(R.id.virtual_joystick_pos);
         joystickRotationNodeMain = (CustomVirtualJoystickView) findViewById(R.id.virtual_joystick_rot);
-        joystickPositionNodeMain.setHolonomic(true);
+        joystickPositionNodeMain.setHolonomic(false);
         joystickRotationNodeMain.setHolonomic(true);
 
         imageStreamNodeMain = (RosImageView<CompressedImage>) findViewById(R.id.streamingView);
 
         velocityTopic =  new TwistTopic();
-        velocityTopic.publishTo(getString(R.string.topic_rosariavel), false, 10);
+        velocityTopic.publishTo(getString(R.string.topic_robot_nav), false, 10);
         velocityTopic.setPublishingFreq(100);
+
+        arm_navTopic =  new TwistTopic();
+        arm_navTopic.publishTo(getString(R.string.topic_r_arm_nav), false, 10);
+        arm_navTopic.setPublishingFreq(100);
 
         interfaceNumberTopic = new Int32Topic();
         interfaceNumberTopic.publishTo(getString(R.string.topic_interfacenumber), true, 0);
@@ -129,16 +136,22 @@ public class ScreenJoystickInterface extends RosActivity {
         p3dxNumberTopic.setPublisher_int(0);
         p3dxNumberTopic.publishNow();
 
+
+        graspTopic = new Float32Topic();
+        graspTopic.publishTo(getString(R.string.topic_r_arm_grasp), false, 10);
+        graspTopic.setPublishingFreq(10);
+        graspTopic.setPublisher_float(0.0f);
+
         emergencyTopic = new BooleanTopic();
         emergencyTopic.publishTo(getString(R.string.topic_emergencystop), true, 0);
         emergencyTopic.setPublishingFreq(100);
         emergencyTopic.setPublisher_bool(true);
 
         androidNode = new AndroidNode(NODE_NAME);
-        androidNode.addTopics(emergencyTopic, interfaceNumberTopic, cameraNumberTopic, p3dxNumberTopic); //velocityTopic ,cameraPTZTopic
+        androidNode.addTopics(emergencyTopic, interfaceNumberTopic, cameraNumberTopic, p3dxNumberTopic, graspTopic); //velocityTopic ,cameraPTZTopic
 
         if ( MainActivity.PREFERENCES.containsKey((getString(R.string.tcp))) )
-            androidNode.addTopics(velocityTopic ,cameraPTZTopic);
+            androidNode.addTopics(velocityTopic, arm_navTopic,cameraPTZTopic);
         if ( MainActivity.PREFERENCES.containsKey((getString(R.string.ros_cimage))) )
             androidNode.addNodeMain(imageStreamNodeMain);
         else
@@ -164,10 +177,10 @@ public class ScreenJoystickInterface extends RosActivity {
         toggleCamera2 = (ToggleButton)findViewById(R.id.toggleCamera2);
         toggleCamera3 = (ToggleButton)findViewById(R.id.toggleCamera3);
         toggleCamera4 = (ToggleButton)findViewById(R.id.toggleCamera4);
-        toggleAllControl = (ToggleButton)findViewById(R.id.toggleAllControl);
-        toggleSimulatorControl = (ToggleButton)findViewById(R.id.toggleSimulatorControl);
-        toggleP3DX1Control = (ToggleButton)findViewById(R.id.toggleP3DX1Control);
-        toggleP3DX2Control = (ToggleButton)findViewById(R.id.toggleP3DX2Control);
+        //toggleAllControl = (ToggleButton)findViewById(R.id.toggleAllControl);
+        //toggleSimulatorControl = (ToggleButton)findViewById(R.id.toggleSimulatorControl);
+        //toggleP3DX1Control = (ToggleButton)findViewById(R.id.toggleP3DX1Control);
+        //toggleP3DX2Control = (ToggleButton)findViewById(R.id.toggleP3DX2Control);
 
         targetImage = (ImageView) findViewById(R.id.targetView);
 
@@ -210,7 +223,6 @@ public class ScreenJoystickInterface extends RosActivity {
                     toggleCamera4.setChecked(false);
                     cameraNumberTopic.setPublisher_int(0);
                     cameraNumberTopic.publishNow();
-                    //joystickRotationNodeMain.setVisibility(View.INVISIBLE);
                     textPTZ.setVisibility(View.INVISIBLE);
                 }
             }
@@ -227,7 +239,6 @@ public class ScreenJoystickInterface extends RosActivity {
                     toggleCamera4.setChecked(false);
                     cameraNumberTopic.setPublisher_int(1);
                     cameraNumberTopic.publishNow();
-                    //joystickRotationNodeMain.setVisibility(View.INVISIBLE);
                     textPTZ.setVisibility(View.INVISIBLE);
                 }
             }
@@ -244,7 +255,6 @@ public class ScreenJoystickInterface extends RosActivity {
                     toggleCamera4.setChecked(false);
                     cameraNumberTopic.setPublisher_int(2);
                     cameraNumberTopic.publishNow();
-                    //joystickRotationNodeMain.setVisibility(View.VISIBLE);
                     textPTZ.setVisibility(View.VISIBLE);
                 }
             }
@@ -261,89 +271,7 @@ public class ScreenJoystickInterface extends RosActivity {
                     toggleCamera4.setChecked(true);
                     cameraNumberTopic.setPublisher_int(3);
                     cameraNumberTopic.publishNow();
-                    //joystickRotationNodeMain.setVisibility(View.INVISIBLE);
                     textPTZ.setVisibility(View.INVISIBLE);
-                }
-            }
-        });
-
-        toggleAllControl.setOnCheckedChangeListener( new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
-                if(isChecked){
-                    Toast.makeText(getApplicationContext(), "Control: ALL", Toast.LENGTH_SHORT).show();
-                    toggleAllControl.setChecked(true);
-                    toggleSimulatorControl.setChecked(false);
-                    toggleP3DX1Control.setChecked(false);
-                    toggleP3DX2Control.setChecked(false);
-                    p3dxNumberTopic.setPublisher_int(-1);
-                    p3dxNumberTopic.publishNow();
-                }
-            }
-        });
-
-        toggleSimulatorControl.setOnCheckedChangeListener( new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
-                if(isChecked){
-                    Toast.makeText(getApplicationContext(), "Control: Simulation", Toast.LENGTH_SHORT).show();
-                    toggleAllControl.setChecked(false);
-                    toggleSimulatorControl.setChecked(true);
-                    toggleP3DX1Control.setChecked(false);
-                    toggleP3DX2Control.setChecked(false);
-                    p3dxNumberTopic.setPublisher_int(0);
-                    p3dxNumberTopic.publishNow();
-
-                    toggleCamera1.setChecked(true);
-                    toggleCamera1.setEnabled(true);
-                    toggleCamera2.setChecked(false);
-                    toggleCamera2.setEnabled(false);
-                    toggleCamera3.setChecked(false);
-                    toggleCamera3.setEnabled(false);
-                }
-            }
-        });
-
-        toggleP3DX1Control.setOnCheckedChangeListener( new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
-                if(isChecked){
-                    Toast.makeText(getApplicationContext(), "Control: P3DX1", Toast.LENGTH_SHORT).show();
-                    toggleAllControl.setChecked(false);
-                    toggleSimulatorControl.setChecked(false);
-                    toggleP3DX1Control.setChecked(true);
-                    toggleP3DX2Control.setChecked(false);
-                    p3dxNumberTopic.setPublisher_int(1);
-                    p3dxNumberTopic.publishNow();
-
-                    toggleCamera1.setChecked(false);
-                    toggleCamera1.setEnabled(false);
-                    toggleCamera2.setChecked(true);
-                    toggleCamera2.setEnabled(true);
-                    toggleCamera3.setChecked(false);
-                    toggleCamera3.setEnabled(true);
-                }
-            }
-        });
-
-        toggleP3DX2Control.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
-                if (isChecked) {
-                    Toast.makeText(getApplicationContext(), "Control: P3DX2", Toast.LENGTH_SHORT).show();
-                    toggleAllControl.setChecked(false);
-                    toggleSimulatorControl.setChecked(false);
-                    toggleP3DX1Control.setChecked(false);
-                    toggleP3DX2Control.setChecked(true);
-                    p3dxNumberTopic.setPublisher_int(2);
-                    p3dxNumberTopic.publishNow();
-
-                    toggleCamera1.setChecked(false);
-                    toggleCamera1.setEnabled(false);
-                    toggleCamera2.setChecked(true);
-                    toggleCamera2.setEnabled(true);
-                    toggleCamera3.setChecked(false);
-                    toggleCamera3.setEnabled(true);
                 }
             }
         });
@@ -439,10 +367,35 @@ public class ScreenJoystickInterface extends RosActivity {
             udpCommCommand.sendData(data.getBytes());
 
         if ( MainActivity.PREFERENCES.containsKey((getString(R.string.tcp))) ){
-            velocityTopic.setPublisher_linear(new float[]{acceleration, 0, 0});
-            velocityTopic.setPublisher_angular(new float[]{0, 0, steer});
+
+            float axisX = joystickRotationNodeMain.getAxisX();
+            float axisY = joystickRotationNodeMain.getAxisY();
+            float axisZ = joystickRotationNodeMain.getAxisZ();
+            float grasp = graspHandler.getValue();
+
+            if (Math.abs(axisX)<0.1f)
+                axisX=0.0f;
+
+            if (Math.abs(axisY)<0.1f)
+                axisY=0.0f;
+
+            if (Math.abs(axisZ)<0.1f)
+                axisZ=0.0f;
+
+            if (grasp<0.1f)
+                grasp=0.0f;
+
+            velocityTopic.setPublisher_linear(new float[]{joystickPositionNodeMain.getAxisX(), joystickPositionNodeMain.getAxisY(), 0});
+            velocityTopic.setPublisher_angular(new float[]{0, 0, joystickPositionNodeMain.getAxisZ()});
+
+            arm_navTopic.setPublisher_linear(new float[]{axisX, axisY, 0});
+            arm_navTopic.setPublisher_angular(new float[]{0, 0, axisZ});
+
+            graspTopic.setPublisher_float(grasp);
+
             velocityTopic.publishNow();
-            cameraPTZTopic.publishNow();
+            arm_navTopic.publishNow();
+            graspTopic.publishNow();
         }
 
 

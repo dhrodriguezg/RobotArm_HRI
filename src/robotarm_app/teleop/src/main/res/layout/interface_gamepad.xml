@@ -5,7 +5,7 @@
     tools:context=".GamepadInterface"
     android:orientation="horizontal">
 
-    <uniandes.disc.imagine.android_hri.mobile_interaction.utils.MjpegView
+    <uniandes.disc.imagine.robotarm_app.teleop.utils.MjpegView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:id="@+id/mjpegView"

@@ -106,7 +106,7 @@ public class GamepadInterface extends RosActivity {
         joystickRotationNodeMain = (ImageView) findViewById(R.id.virtual_joystick_rot);
         targetImage = (ImageView) findViewById(R.id.targetView);
         velocityTopic = new TwistTopic();
-        velocityTopic.publishTo(getString(R.string.topic_rosariavel), false, 10);
+        velocityTopic.publishTo(getString(R.string.topic_robot_nav), false, 10);
         velocityTopic.setPublishingFreq(100);
 
         interfaceNumberTopic = new Int32Topic();

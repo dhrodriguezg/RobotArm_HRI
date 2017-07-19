@@ -6,7 +6,7 @@
     android:orientation="horizontal">
 
 
-    <uniandes.disc.imagine.android_hri.mobile_interaction.widget.CustomCameraView
+    <uniandes.disc.imagine.robotarm_app.teleop.widget.CustomCameraView
         android:id="@+id/custom_camera_view"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"

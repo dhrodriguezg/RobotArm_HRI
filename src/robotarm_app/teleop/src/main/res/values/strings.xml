@@ -101,9 +101,9 @@
     <string name="p3dx2_control">P3DX2</string>
 
     <!-- GAMEPAD TEXT -->
-    <string name="position_control">Steer</string>
-    <string name="rotation_control">Camera PTZ</string>
-    <string name="grasping_open">Throttle</string>
+    <string name="position_control">Navigation</string>
+    <string name="rotation_control">Arm Nav.</string>
+    <string name="grasping_open">Grasping</string>
     <string name="grasping_close">Reverse</string>
     <string name="gamepad_on_msg">Gamepad FOUND!</string>
     <string name="gamepad_off_msg">Gamepad NOT found! Connect a gamepad and try again.</string>
@@ -153,11 +153,15 @@
     <string name="topic_emergencystop">/android/emergency_stop</string>
     <string name="topic_interfacenumber">/android/interface_number</string>
 
-    <string name="topic_camera_number">/stream/selection</string>
+    <string name="topic_camera_number">/android/camera/selection</string>
     <string name="topic_camera_ptz">/android/camera_ptz</string>
     <string name="topic_p3dx_number">/rosaria/selection</string>
 
-    <string name="topic_rosariavel">/android/cmd_vel</string>
+    <string name="topic_robot_nav">/android/robot_navegation</string>
+    <string name="topic_r_arm_grasp">/android/r_arm_grasp</string>
+    <string name="topic_r_arm_nav">/android/r_arm_navigation</string>
+
+
     <string name="topic_positionrel">/android/position_rel</string>
     <string name="topic_positionabs">/android/position_abs</string>
     <string name="topic_rotationrel">/android/rotation_rel</string>
