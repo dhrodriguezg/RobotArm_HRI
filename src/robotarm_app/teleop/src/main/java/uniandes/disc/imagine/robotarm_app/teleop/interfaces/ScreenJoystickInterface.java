@@ -101,7 +101,7 @@ public class ScreenJoystickInterface extends RosActivity {
         textPTZ = (TextView) findViewById(R.id.rotationTextView);
         joystickPositionNodeMain = (CustomVirtualJoystickView) findViewById(R.id.virtual_joystick_pos);
         joystickRotationNodeMain = (CustomVirtualJoystickView) findViewById(R.id.virtual_joystick_rot);
-        joystickPositionNodeMain.setHolonomic(false);
+        joystickPositionNodeMain.setHolonomic(true);
         joystickRotationNodeMain.setHolonomic(true);
 
         imageStreamNodeMain = (RosImageView<CompressedImage>) findViewById(R.id.streamingView);
@@ -166,12 +166,12 @@ public class ScreenJoystickInterface extends RosActivity {
 
         graspHandler = (ScrollerView) findViewById(R.id.scrollerView);
         graspHandler.setTopValue(-1.f);
-        graspHandler.setBottomValue(1.f);
+        graspHandler.setBottomValue(0.f);
         graspHandler.setFontSize(13);
         graspHandler.setMaxTotalItems(7);
         graspHandler.setMaxVisibleItems(7);
-        graspHandler.beginAtMiddle();
-        //graspHandler.showPercentage();
+        graspHandler.beginAtTop();
+        graspHandler.showPercentage();
 
         toggleCamera1 = (ToggleButton)findViewById(R.id.toggleCamera1);
         toggleCamera2 = (ToggleButton)findViewById(R.id.toggleCamera2);

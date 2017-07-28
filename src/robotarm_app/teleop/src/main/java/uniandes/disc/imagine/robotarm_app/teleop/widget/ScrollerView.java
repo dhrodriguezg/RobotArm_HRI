@@ -31,6 +31,7 @@ public class ScrollerView extends RelativeLayout {
     private Vector<TextView> vectorText;
     private TextView activeView;
     private boolean updateView;
+    private boolean resetOnRelease;
     private int BACKGROUND = Color.LTGRAY;
     private int BORDER = Color.argb(191, 0, 0, 0);
     private boolean percentage;
@@ -66,6 +67,7 @@ public class ScrollerView extends RelativeLayout {
         /** Init Layouts**/
         this.context=context;
         updateView = true;
+        resetOnRelease = false;
         percentage = false;
         mainLayout = this;
         scrollView = new CustomScrollView(context);
@@ -189,8 +191,8 @@ public class ScrollerView extends RelativeLayout {
         for(int n=1; n < 1+maxVisibleItems/2; n++){
             TextView belowText = vectorText.elementAt(index+maxVisibleItems/2 + n );
             TextView aboveText = vectorText.elementAt(index+maxVisibleItems/2 - n );
-            belowText.setTextSize(fontSize- Math.abs(belowText.getY() - cy)/(float)belowText.getHeight());
-            aboveText.setTextSize(fontSize-0.5f* Math.abs(aboveText.getY() - cy)/(float)aboveText.getHeight());
+            belowText.setTextSize(fontSize - Math.abs(belowText.getY() - cy) / (float) belowText.getHeight());
+            aboveText.setTextSize(fontSize - 0.5f * Math.abs(aboveText.getY() - cy) / (float) aboveText.getHeight());
         }
     }
 
@@ -210,6 +212,10 @@ public class ScrollerView extends RelativeLayout {
 
     public void showPercentage(){
         percentage = true;
+    }
+
+    public void resetOnRelease() {
+        resetOnRelease = true;
     }
 
     public void showVales(){
@@ -304,7 +310,8 @@ public class ScrollerView extends RelativeLayout {
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_POINTER_UP:
                 case MotionEvent.ACTION_CANCEL:
-                    scrollTo(0, (int) vectorText.elementAt(initialPosition - 1).getY());
+                    if(resetOnRelease)
+                        scrollTo(0, (int) vectorText.elementAt(initialPosition - 1).getY());
                     break;
             }
             return true;
