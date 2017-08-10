@@ -1,24 +1,16 @@
 package uniandes.disc.imagine.robotarm_app.teleop.interfaces;
 
-import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
 import android.os.Bundle;
-import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewTreeObserver;
 import android.view.WindowManager;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
-import android.widget.RadioButton;
-import android.widget.RelativeLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
@@ -34,16 +26,16 @@ import java.net.URI;
 import sensor_msgs.CompressedImage;
 import uniandes.disc.imagine.robotarm_app.teleop.MainActivity;
 import uniandes.disc.imagine.robotarm_app.teleop.R;
-import uniandes.disc.imagine.robotarm_app.teleop.topic.BooleanTopic;
 import uniandes.disc.imagine.robotarm_app.teleop.topic.Float32Topic;
 import uniandes.disc.imagine.robotarm_app.teleop.topic.Int32Topic;
-import uniandes.disc.imagine.robotarm_app.teleop.topic.PointTopic;
 import uniandes.disc.imagine.robotarm_app.teleop.topic.TwistTopic;
-import uniandes.disc.imagine.robotarm_app.teleop.touchscreen.MultiGestureArea;
+import uniandes.disc.imagine.robotarm_app.teleop.touchscreen.StandardGestureDetector;
 import uniandes.disc.imagine.robotarm_app.teleop.utils.AndroidNode;
 import uniandes.disc.imagine.robotarm_app.teleop.utils.MjpegInputStream;
 import uniandes.disc.imagine.robotarm_app.teleop.utils.MjpegView;
 import uniandes.disc.imagine.robotarm_app.teleop.utils.UDPComm;
+import uniandes.disc.imagine.robotarm_app.teleop.widget.CustomVirtualJoystickView;
+import uniandes.disc.imagine.robotarm_app.teleop.widget.ScrollerView;
 
 
 public class DirectManipulationInterface extends RosActivity implements SensorEventListener {
@@ -52,42 +44,27 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
     private static final String NODE_NAME="/android_"+TAG.toLowerCase();
 
     private NodeMainExecutorService nodeMain;
-    private MultiGestureArea statelessGestureHandler = null;
+    private StandardGestureDetector standarGestureDetector = null;
 
+    private CustomVirtualJoystickView virtualJoystickNodeMain;
     private RosImageView<CompressedImage> imageStreamNodeMain;
-    private ImageView targetImage;
-    private ImageView positionImage;
-    private TextView msgText;
-    private RadioButton deviceMsim;
-    private RadioButton deviceP3DX1;
-    private RadioButton cameraSim;
-    private RadioButton cameraTopDown;
-    private RadioButton cameraFirstPerson;
+    private ScrollerView scroller = null;
+    private ToggleButton toggleCamera1;
+    private ToggleButton toggleCamera2;
+    private ToggleButton toggleCamera3;
+    private ToggleButton toggleCamera4;
 
     private AndroidNode androidNode;
-    private BooleanTopic emergencyTopic;
-    private Int32Topic interfaceNumberTopic;
-    private PointTopic positionTopic;
-    private PointTopic rotationTopic;
-    private Float32Topic graspTopic;
-    private Int32Topic cameraNumberTopic;
-    private Int32Topic cameraPTZTopic;
-    private Int32Topic p3dxNumberTopic;
-    private TwistTopic velocityTopic;
-
-    private StringBuffer msg;
-    private String moveMsg="";
-    private String rotateMsg="";
-    private String graspMsg="";
+    private Float32Topic arm_graspTopic;
+    private Int32Topic viewSelectionTopic;
+    private TwistTopic robot_navTopic;
+    private TwistTopic arm_navTopic;
 
     private UDPComm udpCommCommand;
     private MjpegView mjpegView;
-    private boolean running = true;
-
-    private SensorManager senSensorManager;
-    private Sensor senAccelerometer;
-    private float[] lastPosition;
-    private float maxTargetSpeed;
+    private boolean isRunning = true;
+    private boolean isNavigation = true;
+    private boolean isManipulation = false;
 
     public DirectManipulationInterface() {
         super(TAG, TAG, URI.create(MainActivity.PREFERENCES.getProperty("ROS_MASTER_URI")));
@@ -95,135 +72,159 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
 
     	Intent intent = getIntent();
-        super.onCreate(savedInstanceState);
+        setContentView(R.layout.interface_directmanipulation);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        setContentView(R.layout.interface_directmanipulation);
 
-        deviceMsim = (RadioButton) findViewById(R.id.radioMSIM);
-        deviceP3DX1 = (RadioButton) findViewById(R.id.radioP3DX1);
-        cameraSim = (RadioButton) findViewById(R.id.radioSimulator);
-        cameraTopDown = (RadioButton) findViewById(R.id.radioTopDown);
-        cameraFirstPerson = (RadioButton) findViewById(R.id.radioFirstPerson);
-
-        maxTargetSpeed = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, Float.parseFloat(getString(R.string.max_target_speed)), getResources().getDisplayMetrics());
-        moveMsg=getString(R.string.move_msg) + " (%.4f , %.4f)";
-        rotateMsg=getString(R.string.rotate_msg) + " += %.2f";
-        graspMsg=getString(R.string.grasp_msg) + " = %.2f";
-        targetImage = (ImageView) findViewById(R.id.targetView);
-        positionImage = (ImageView) findViewById(R.id.positionView);
-        msgText = (TextView) findViewById(R.id.msgTextView);
-
-        if ( MainActivity.PREFERENCES.containsKey((getString(R.string.udp))) )
-            udpCommCommand = new UDPComm( MainActivity.PREFERENCES.getProperty( getString(R.string.MASTER) ) , Integer.parseInt(getString(R.string.udp_port)));
+        //textPTZ = (TextView) findViewById(R.id.rotationTextView); UDP
 
         mjpegView = (MjpegView) findViewById(R.id.mjpegView);
         mjpegView.setDisplayMode(MjpegView.SIZE_BEST_FIT);
         mjpegView.showFps(true);
 
+        toggleCamera1 = (ToggleButton)findViewById(R.id.toggleCamera1);
+        toggleCamera2 = (ToggleButton)findViewById(R.id.toggleCamera2);
+        toggleCamera3 = (ToggleButton)findViewById(R.id.toggleCamera3);
+        toggleCamera4 = (ToggleButton)findViewById(R.id.toggleCamera4);
+
+        scroller = (ScrollerView) findViewById(R.id.scrollerView);
+        scroller.setTopValue(-0.1f);
+        scroller.setBottomValue(0.1f);
+        scroller.setFontSize(13);
+        scroller.setMaxTotalItems(5);
+        scroller.setMaxVisibleItems(5);
+        scroller.beginAtMiddle();
+
+        virtualJoystickNodeMain = (CustomVirtualJoystickView) findViewById(R.id.virtual_joystick);
+        virtualJoystickNodeMain.setHolonomic(true);
+
         imageStreamNodeMain = (RosImageView<CompressedImage>) findViewById(R.id.streamingView);
-
-        velocityTopic =  new TwistTopic();
-        velocityTopic.publishTo(getString(R.string.topic_robot_nav), false, 10);
-        velocityTopic.setPublishingFreq(100);
-
         imageStreamNodeMain.setTopicName(getString(R.string.topic_streaming));
         imageStreamNodeMain.setMessageType(getString(R.string.topic_streaming_msg));
         imageStreamNodeMain.setMessageToBitmapCallable(new BitmapFromCompressedImage());
         imageStreamNodeMain.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        imageStreamNodeMain.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-            @Override
-            public void onGlobalLayout() {
-                imageStreamNodeMain.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                onPostLayout();
-            }
-        });
 
-        positionTopic = new PointTopic();
-        positionTopic.publishTo(getString(R.string.topic_positionabs), false, 10);
+        robot_navTopic =  new TwistTopic();
+        robot_navTopic.publishTo(getString(R.string.topic_robot_nav), false, 10);
+        robot_navTopic.setPublishingFreq(10);
 
-        rotationTopic = new PointTopic();
-        rotationTopic.publishTo(getString(R.string.topic_rotationabs), false, 10);
+        arm_navTopic =  new TwistTopic();
+        arm_navTopic.publishTo(getString(R.string.topic_r_arm_nav), false, 10);
+        arm_navTopic.setPublishingFreq(10);
 
-        graspTopic = new Float32Topic();
-        graspTopic.setPublishingFreq(500);
-        graspTopic.publishTo(getString(R.string.topic_graspingabs), true, 0);
+        arm_graspTopic = new Float32Topic();
+        arm_graspTopic.publishTo(getString(R.string.topic_r_arm_grasp), false, 10);
+        arm_graspTopic.setPublishingFreq(10);
+        arm_graspTopic.setPublisher_float(0.0f);
 
-        interfaceNumberTopic = new Int32Topic();
-        interfaceNumberTopic.publishTo(getString(R.string.topic_interfacenumber), true, 0);
-        interfaceNumberTopic.setPublishingFreq(100);
-        interfaceNumberTopic.setPublisher_int(3);
-
-        cameraNumberTopic = new Int32Topic();
-        cameraNumberTopic.publishTo(getString(R.string.topic_camera_number), false, 100);
-        cameraNumberTopic.setPublishingFreq(10);
-        cameraNumberTopic.setPublisher_int(0);
-        cameraNumberTopic.publishNow();
-
-        cameraPTZTopic = new Int32Topic();
-        cameraPTZTopic.publishTo(getString(R.string.topic_camera_ptz), false, 10);
-        cameraPTZTopic.setPublishingFreq(10);
-        cameraPTZTopic.setPublisher_int(-1);
-
-        p3dxNumberTopic = new Int32Topic();
-        p3dxNumberTopic.publishTo(getString(R.string.topic_p3dx_number), false, 100);
-        p3dxNumberTopic.setPublishingFreq(10);
-        p3dxNumberTopic.setPublisher_int(0);
-        p3dxNumberTopic.publishNow();
-
-        emergencyTopic = new BooleanTopic();
-        emergencyTopic.publishTo(getString(R.string.topic_emergencystop), true, 0);
-        emergencyTopic.setPublishingFreq(100);
-        emergencyTopic.setPublisher_bool(true);
+        viewSelectionTopic = new Int32Topic();
+        viewSelectionTopic.publishTo(getString(R.string.topic_camera_number), false, 100);
+        viewSelectionTopic.setPublishingFreq(10);
+        viewSelectionTopic.setPublisher_int(0);
+        viewSelectionTopic.publishNow();
 
         androidNode = new AndroidNode(NODE_NAME);
-        androidNode.addTopics(emergencyTopic, p3dxNumberTopic, cameraNumberTopic, interfaceNumberTopic); //positionTopic, graspTopic, rotationTopic,
-        androidNode.addNodeMain(imageStreamNodeMain);
+        androidNode.addTopics(viewSelectionTopic);
 
         if ( MainActivity.PREFERENCES.containsKey((getString(R.string.tcp))) )
-            androidNode.addTopics(velocityTopic, cameraPTZTopic );
+            androidNode.addTopics(robot_navTopic, arm_navTopic, arm_graspTopic);
         if ( MainActivity.PREFERENCES.containsKey((getString(R.string.ros_cimage))) ) {
             androidNode.addNodeMain(imageStreamNodeMain);
-            statelessGestureHandler = new MultiGestureArea(this, imageStreamNodeMain);
+            standarGestureDetector = new StandardGestureDetector(this, imageStreamNodeMain);
         }else
-            imageStreamNodeMain.setVisibility( View.GONE );
+            imageStreamNodeMain.setVisibility(View.GONE);
         if ( !MainActivity.PREFERENCES.containsKey((getString(R.string.mjpeg))) )
             mjpegView.setVisibility(View.GONE);
         else {
-            statelessGestureHandler = new MultiGestureArea(this, mjpegView);
+            standarGestureDetector = new StandardGestureDetector(this, mjpegView);
         }
-        senSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        senAccelerometer = senSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        senSensorManager.registerListener(this, senAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
 
-        ToggleButton emergencyStop = (ToggleButton)findViewById(R.id.emergencyButton) ;
-        emergencyStop.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+        if ( MainActivity.PREFERENCES.containsKey((getString(R.string.udp))) )
+            udpCommCommand = new UDPComm( MainActivity.PREFERENCES.getProperty( getString(R.string.MASTER) ) , Integer.parseInt(getString(R.string.udp_port)));
+
+        toggleCamera1.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
                 if (isChecked) {
-                    Toast.makeText(getApplicationContext(), getString(R.string.emergency_on_msg), Toast.LENGTH_LONG).show();
-                    imageStreamNodeMain.setBackgroundColor(Color.RED);
-                    emergencyTopic.setPublisher_bool(false);
-                } else {
-                    Toast.makeText(getApplicationContext(), getString(R.string.emergency_off_msg), Toast.LENGTH_LONG).show();
-                    imageStreamNodeMain.setBackgroundColor(Color.TRANSPARENT);
-                    emergencyTopic.setPublisher_bool(true);
+                    isNavigation = true;
+                    isManipulation = false;
+                    Toast.makeText(getApplicationContext(), getString(R.string.camera1_name), Toast.LENGTH_SHORT).show();
+                    toggleCamera1.setChecked(true);
+                    toggleCamera2.setChecked(false);
+                    toggleCamera3.setChecked(false);
+                    toggleCamera4.setChecked(false);
+                    viewSelectionTopic.setPublisher_int(0);
+                    viewSelectionTopic.publishNow();
+                    virtualJoystickNodeMain.setVisibility(View.INVISIBLE);
                 }
             }
         });
 
-        msg = new StringBuffer();
+        toggleCamera2.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
+                if (isChecked) {
+                    isNavigation = false;
+                    isManipulation = true;
+                    Toast.makeText(getApplicationContext(), getString(R.string.camera2_name), Toast.LENGTH_SHORT).show();
+                    toggleCamera1.setChecked(false);
+                    toggleCamera2.setChecked(true);
+                    toggleCamera3.setChecked(false);
+                    toggleCamera4.setChecked(false);
+                    viewSelectionTopic.setPublisher_int(1);
+                    viewSelectionTopic.publishNow();
+                    virtualJoystickNodeMain.setVisibility(View.VISIBLE);
+                }
+            }
+        });
+
+        toggleCamera3.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
+                if (isChecked) {
+                    isNavigation = false;
+                    isManipulation = true;
+                    Toast.makeText(getApplicationContext(), getString(R.string.camera3_name), Toast.LENGTH_SHORT).show();
+                    toggleCamera1.setChecked(false);
+                    toggleCamera2.setChecked(false);
+                    toggleCamera3.setChecked(true);
+                    toggleCamera4.setChecked(false);
+                    viewSelectionTopic.setPublisher_int(2);
+                    viewSelectionTopic.publishNow();
+                    virtualJoystickNodeMain.setVisibility(View.VISIBLE);
+                }
+            }
+        });
+
+        toggleCamera4.setOnCheckedChangeListener( new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
+                if(isChecked){
+                    isNavigation = false;
+                    isManipulation = true;
+                    Toast.makeText(getApplicationContext(), getString(R.string.camera4_name), Toast.LENGTH_SHORT).show();
+                    toggleCamera1.setChecked(false);
+                    toggleCamera2.setChecked(false);
+                    toggleCamera3.setChecked(false);
+                    toggleCamera4.setChecked(true);
+                    viewSelectionTopic.setPublisher_int(3);
+                    viewSelectionTopic.publishNow();
+                    virtualJoystickNodeMain.setVisibility(View.VISIBLE);
+                }
+            }
+        });
+
         Thread threadGestures = new Thread(){
             public void run(){
                 if ( MainActivity.PREFERENCES.containsKey((getString(R.string.mjpeg))) )
                     mjpegView.setSource(MjpegInputStream.read(MainActivity.PREFERENCES.getProperty(getString(R.string.STREAM_URL), "")));
-                while(running){
+                while(isRunning){
                     try {
-                        Thread.sleep(100);
-                        updateVelocity();
-                        updateText();
+                        Thread.sleep(20);
+                        sendData2Core();
                     } catch (InterruptedException e) {
                         e.getStackTrace();
                     }
@@ -233,34 +234,24 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
         threadGestures.start();
     }
 
-    private void onPostLayout(){
-        lastPosition = new float[]{targetImage.getX()+targetImage.getWidth()/2, targetImage.getY()+targetImage.getHeight()/2};
-        int px = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 120, getResources().getDisplayMetrics()); //convert pid to pixel
-        RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)targetImage.getLayoutParams();
-        params.rightMargin=px;
-    }
-
     @Override
     public void onResume() {
         super.onResume();
-        emergencyTopic.setPublisher_bool(true);
-        running=true;
+        isRunning =true;
     }
     
     @Override
     protected void onPause() {
-        emergencyTopic.setPublisher_bool(false);
         mjpegView.stopPlayback();
     	super.onPause();
     }
     
     @Override
     public void onDestroy() {
-        emergencyTopic.setPublisher_bool(false);
         nodeMain.forceShutdown();
         if (udpCommCommand!= null)
             udpCommCommand.destroy();
-        running=false;
+        isRunning =false;
         super.onDestroy();
     }
     
@@ -274,169 +265,89 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
         return super.onOptionsItemSelected(item);
     }
 
-    private void updateVelocity() {
+    private void sendData2Core() {
 
-        float throttle = 0.f;
-        float steer = 0.f;
-        float cameraControlHorizontal = 0.f;
-        float cameraControlVertical = 0.f;
+        runOnUiThread(new Runnable() {
+            public void run() {
+                scroller.updateView();
+            }
+        });
 
-        if(statelessGestureHandler.isDetectingMultiGesture()) {
-            throttle = -statelessGestureHandler.getThrottle();
-            steer = statelessGestureHandler.getSteer();
+        /*if(!standarGestureDetector.isDetectingGesture()){
+            return;
+        }*/
+
+        float robot_axisX = 0.f;
+        float robot_axisY = 0.f;
+        float robot_axisZ = 0.f;
+        float robot_axisRZ = 0.f;
+        float arm_axisX = 0.f;
+        float arm_axisY= 0.f;
+        float arm_axisZ = 0.f;
+        float arm_axisRX = 0.f;
+        float arm_axisRY= 0.f;
+        float arm_axisRZ = 0.f;
+        float grasp = 1-standarGestureDetector.getGrasp();
+        float axisX = standarGestureDetector.getTargetX();
+        float axisY = standarGestureDetector.getTargetY();
+        float axisZ = standarGestureDetector.getThridDimension();
+        float axisRX = virtualJoystickNodeMain.getAxisX();
+        float axisRY = virtualJoystickNodeMain.getAxisY();
+        float axisRZ = standarGestureDetector.getRotation()/180.f;
+
+
+        if(Math.abs(axisX) < 0.01f)
+            axisX=0.f;
+        if(Math.abs(axisY) < 0.01f)
+            axisY=0.f;
+        if(Math.abs(axisZ) < 0.01f)
+            axisZ=0.f;
+        if(Math.abs(axisRZ) < 0.01f)
+            axisRZ=0.f;
+
+        if (isNavigation){
+            robot_axisX=-axisY;
+            robot_axisY=-axisX;
+            robot_axisZ=-axisZ;
+            robot_axisRZ=axisRZ;
+            robot_navTopic.setPublisher_linear(new float[]{robot_axisX, robot_axisY, robot_axisZ});
+            robot_navTopic.setPublisher_angular(new float[]{0, 0, robot_axisRZ});
+            robot_navTopic.publishNow();
+        }
+        if (isManipulation){
+            arm_axisX=-axisY/2.f;
+            arm_axisY=-axisX/2.f;
+            arm_axisZ=-axisZ/2.f;
+            // Yaw=Z, Pitch=Y, Roll=X
+            arm_axisRX = -axisRX/3.f;
+            arm_axisRY = -axisRZ;
+            arm_axisRZ = axisRY/3.f;
+            //arm_axisZ=scroller.getValue();
+
+            arm_navTopic.setPublisher_linear(new float[]{arm_axisX, arm_axisY, arm_axisZ });
+            arm_navTopic.setPublisher_angular(new float[]{arm_axisRX, arm_axisRY, arm_axisRZ});
+            arm_graspTopic.setPublisher_float(grasp);
+
+            arm_navTopic.publishNow();
+            arm_graspTopic.publishNow();
         }
 
-        if(statelessGestureHandler.isDetectingGesture()) {
-
-            if( statelessGestureHandler.isDoubleTap() ){
-
-                statelessGestureHandler.setDoubleTap(false);
-                if ( p3dxNumberTopic.getPublisher_int() == 0 ){
-                    p3dxNumberTopic.setPublisher_int( 1 );
-                }else{
-                    p3dxNumberTopic.setPublisher_int(0);
-                }
-                p3dxNumberTopic.publishNow();
-
-                runOnUiThread(new Runnable() {
-                    public void run() {
-                        if (p3dxNumberTopic.getPublisher_int() == 0) {
-                            deviceMsim.setChecked(true);
-                            deviceP3DX1.setChecked(false);
-                            cameraSim.setChecked(true);
-                            cameraSim.setAlpha(1.f);
-                            cameraTopDown.setChecked(false);
-                            cameraTopDown.setAlpha(.3f);
-                            cameraFirstPerson.setChecked(false);
-                            cameraFirstPerson.setAlpha(.3f);
-                            cameraNumberTopic.setPublisher_int(0);
-                            cameraNumberTopic.publishNow();
-                        } else {
-                            deviceMsim.setChecked(false);
-                            deviceP3DX1.setChecked(true);
-                            cameraSim.setChecked(false);
-                            cameraSim.setAlpha(.3f);
-                            cameraTopDown.setChecked(true);
-                            cameraTopDown.setAlpha(1.f);
-                            cameraFirstPerson.setChecked(false);
-                            cameraFirstPerson.setAlpha(1.f);
-                            cameraNumberTopic.setPublisher_int(1);
-                            cameraNumberTopic.publishNow();
-                        }
-                    }
-                });
-
-            }
-
-            if( statelessGestureHandler.isLongPress() ){
-
-                statelessGestureHandler.setLongPress(false);
-
-                int device = p3dxNumberTopic.getPublisher_int();
-                if( device == 0 ){
-                    cameraNumberTopic.setPublisher_int(0);
-                    cameraNumberTopic.publishNow();
-                }else{
-                    if ( cameraNumberTopic.getPublisher_int() == 1 ){
-                        cameraNumberTopic.setPublisher_int( 2 );
-                    }else{
-                        cameraNumberTopic.setPublisher_int( 1 );
-                    }
-                    cameraNumberTopic.publishNow();
-                }
-
-                runOnUiThread(new Runnable() {
-                    public void run() {
-                        String msg = "Camera: ";
-                        if (cameraNumberTopic.getPublisher_int() == 0 ) {
-                            msg += "Simulation";
-                            cameraSim.setChecked(true);
-                            cameraTopDown.setChecked(false);
-                            cameraFirstPerson.setChecked(false);
-                        } else if (cameraNumberTopic.getPublisher_int() == 1 ) {
-                            msg += "Top-Down";
-                            cameraSim.setChecked(false);
-                            cameraTopDown.setChecked(true);
-                            cameraFirstPerson.setChecked(false);
-                        } else if (cameraNumberTopic.getPublisher_int() == 2 ) {
-                            msg += "First Person";
-                            cameraSim.setChecked(false);
-                            cameraTopDown.setChecked(false);
-                            cameraFirstPerson.setChecked(true);
-                        } else if (cameraNumberTopic.getPublisher_int() == 3) {
-                            msg += "Web Cam";
-                        }
-                        Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
-
-            if( statelessGestureHandler.isFling() ){
-                statelessGestureHandler.setFling(false);
-                cameraControlHorizontal = -statelessGestureHandler.getFlingX();
-                cameraControlVertical = -statelessGestureHandler.getFlingY();
-            }
-        }
-
-        float acceleration= TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, throttle, getResources().getDisplayMetrics()) / 1200;
-
-        if(Math.abs(steer) < 0.1f)
-            steer=0.f;
-        if( steer > 1.f)
-            steer=1.f;
-        else if( steer < -1.f)
-            steer=-1.f;
-
-        if(Math.abs(acceleration) < 0.025f)
-            acceleration=0.f;
-        if( acceleration > 0.25f)
-            acceleration=0.25f;
-        else if( acceleration < -0.25f)
-            acceleration=-0.25f;
-
-        int ptz = -1;
-        if(cameraControlHorizontal < -0.5f)
-            ptz=4;
-        else if(cameraControlHorizontal > 0.5f)
-            ptz=3;
-
-        if(cameraControlVertical < -0.5f)
-            ptz=2;
-        else if(cameraControlVertical > 0.5f)
-            ptz=1;
-
+        /*
         String data="velocity;"+acceleration+";"+steer;
-        if(cameraNumberTopic.getPublisher_int()==2 && ptz!=-1){
+        if(clameraNumberTopic.getPublisher_int()==2 && ptz!=-1){
             data+=";ptz;"+ptz;
         }else{
             ptz=-1;
         }
-        cameraPTZTopic.setPublisher_int(ptz);
 
         if ( MainActivity.PREFERENCES.containsKey((getString(R.string.udp))) )
             udpCommCommand.sendData(data.getBytes());
+        */
 
         if ( MainActivity.PREFERENCES.containsKey((getString(R.string.tcp))) ){
-            velocityTopic.setPublisher_linear(new float[]{acceleration, 0, 0});
-            velocityTopic.setPublisher_angular(new float[]{0, 0, steer});
-            velocityTopic.publishNow();
-            cameraPTZTopic.publishNow();
+            //send topics
         }
 
-        msg.append(String.format("Steer: %.4f | Throttle: %.4f ", steer, acceleration));
-    }
-
-
-    private void updateText() {
-        final String message = msg.toString();
-        msg.delete(0,msg.length());
-        this.runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                if(message.length()!=0)
-                    msgText.setText(message);
-            }
-        });
     }
 
     @Override

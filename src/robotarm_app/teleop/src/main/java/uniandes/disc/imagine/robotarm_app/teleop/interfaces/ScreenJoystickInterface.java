@@ -136,7 +136,6 @@ public class ScreenJoystickInterface extends RosActivity {
         p3dxNumberTopic.setPublisher_int(0);
         p3dxNumberTopic.publishNow();
 
-
         graspTopic = new Float32Topic();
         graspTopic.publishTo(getString(R.string.topic_r_arm_grasp), false, 10);
         graspTopic.setPublishingFreq(10);
@@ -165,10 +164,10 @@ public class ScreenJoystickInterface extends RosActivity {
         //androidNode.addNodeMains(joystickPositionNodeMain,joystickRotationNodeMain);
 
         graspHandler = (ScrollerView) findViewById(R.id.scrollerView);
-        graspHandler.setTopValue(-1.f);
+        graspHandler.setTopValue(1.f);
         graspHandler.setBottomValue(0.f);
         graspHandler.setFontSize(13);
-        graspHandler.setMaxTotalItems(7);
+        graspHandler.setMaxTotalItems(6);
         graspHandler.setMaxVisibleItems(7);
         graspHandler.beginAtTop();
         graspHandler.showPercentage();
@@ -216,14 +215,14 @@ public class ScreenJoystickInterface extends RosActivity {
             @Override
             public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
                 if (isChecked) {
-                    Toast.makeText(getApplicationContext(), "Camera: Simulation", Toast.LENGTH_SHORT).show();
+
+                    Toast.makeText(getApplicationContext(), getString(R.string.camera1_name), Toast.LENGTH_SHORT).show();
                     toggleCamera1.setChecked(true);
                     toggleCamera2.setChecked(false);
                     toggleCamera3.setChecked(false);
                     toggleCamera4.setChecked(false);
                     cameraNumberTopic.setPublisher_int(0);
                     cameraNumberTopic.publishNow();
-                    textPTZ.setVisibility(View.INVISIBLE);
                 }
             }
         });
@@ -232,14 +231,13 @@ public class ScreenJoystickInterface extends RosActivity {
             @Override
             public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
                 if (isChecked) {
-                    Toast.makeText(getApplicationContext(), "Camera: Top-Down", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getApplicationContext(), getString(R.string.camera2_name), Toast.LENGTH_SHORT).show();
                     toggleCamera1.setChecked(false);
                     toggleCamera2.setChecked(true);
                     toggleCamera3.setChecked(false);
                     toggleCamera4.setChecked(false);
                     cameraNumberTopic.setPublisher_int(1);
                     cameraNumberTopic.publishNow();
-                    textPTZ.setVisibility(View.INVISIBLE);
                 }
             }
         });
@@ -248,14 +246,13 @@ public class ScreenJoystickInterface extends RosActivity {
             @Override
             public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
                 if (isChecked) {
-                    Toast.makeText(getApplicationContext(), "Camera: First Person", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getApplicationContext(), getString(R.string.camera3_name), Toast.LENGTH_SHORT).show();
                     toggleCamera1.setChecked(false);
                     toggleCamera2.setChecked(false);
                     toggleCamera3.setChecked(true);
                     toggleCamera4.setChecked(false);
                     cameraNumberTopic.setPublisher_int(2);
                     cameraNumberTopic.publishNow();
-                    textPTZ.setVisibility(View.VISIBLE);
                 }
             }
         });
@@ -264,14 +261,13 @@ public class ScreenJoystickInterface extends RosActivity {
             @Override
             public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
                 if(isChecked){
-                    Toast.makeText(getApplicationContext(), "Camera: Web Cam", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getApplicationContext(), getString(R.string.camera4_name), Toast.LENGTH_SHORT).show();
                     toggleCamera1.setChecked(false);
                     toggleCamera2.setChecked(false);
                     toggleCamera3.setChecked(false);
                     toggleCamera4.setChecked(true);
                     cameraNumberTopic.setPublisher_int(3);
                     cameraNumberTopic.publishNow();
-                    textPTZ.setVisibility(View.INVISIBLE);
                 }
             }
         });
@@ -371,7 +367,7 @@ public class ScreenJoystickInterface extends RosActivity {
             float axisX = joystickRotationNodeMain.getAxisX();
             float axisY = joystickRotationNodeMain.getAxisY();
             float axisZ = joystickRotationNodeMain.getAxisZ();
-            float grasp = graspHandler.getValue();
+            float grasp = (1-graspHandler.getValue())/10.f;
 
             if (Math.abs(axisX)<0.1f)
                 axisX=0.0f;
@@ -381,9 +377,6 @@ public class ScreenJoystickInterface extends RosActivity {
 
             if (Math.abs(axisZ)<0.1f)
                 axisZ=0.0f;
-
-            if (grasp<0.1f)
-                grasp=0.0f;
 
             velocityTopic.setPublisher_linear(new float[]{joystickPositionNodeMain.getAxisX(), joystickPositionNodeMain.getAxisY(), 0});
             velocityTopic.setPublisher_angular(new float[]{0, 0, joystickPositionNodeMain.getAxisZ()});
@@ -397,9 +390,6 @@ public class ScreenJoystickInterface extends RosActivity {
             arm_navTopic.publishNow();
             graspTopic.publishNow();
         }
-
-
-
 
     }
 

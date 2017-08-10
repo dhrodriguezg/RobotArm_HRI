@@ -119,14 +119,6 @@ public class MainActivity extends ActionBarActivity implements PopupMenu.OnMenuI
             }
         });
 
-        Button calibrationButton = (Button) findViewById(R.id.calibrationButton);
-        calibrationButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startCalibrationActivity();
-            }
-        });
-
         Button cameraButton = (Button) findViewById(R.id.cameraButton);
         cameraButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -219,13 +211,6 @@ public class MainActivity extends ActionBarActivity implements PopupMenu.OnMenuI
         int exit = pingHost(rosIP.getText().toString(), 5, true);
         if (exit!=0){
             Toast.makeText(getApplicationContext(), rosIP.getText().toString() + " is not reachable!!!", Toast.LENGTH_LONG).show();
-        }
-    }
-
-    private void startCalibrationActivity(){
-        if (isMasterValid()){
-            Intent myIntent = new Intent(MainActivity.this, SetupActivity.class);
-            MainActivity.this.startActivity(myIntent);
         }
     }
 
