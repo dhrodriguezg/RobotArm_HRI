@@ -93,7 +93,7 @@
     <string name="camera1_name">Top-Down View</string>
     <string name="camera2_name">Head View</string>
     <string name="camera3_name">Arm View</string>
-    <string name="camera4_name">Hand View</string>
+    <string name="camera4_name">Side View</string>
     <string name="total_control">Steer/Throttle</string>
     <string name="all_control">ALL</string>
     <string name="sim_control">MSim</string>

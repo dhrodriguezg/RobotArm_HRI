@@ -49,6 +49,10 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
     private CustomVirtualJoystickView virtualJoystickNodeMain;
     private RosImageView<CompressedImage> imageStreamNodeMain;
     private ScrollerView scroller = null;
+    private ToggleButton toggleOmnidirectional;
+    private ToggleButton toggleGripperPose1;
+    private ToggleButton toggleGripperPose2;
+    private ToggleButton toggleGripperPose3;
     private ToggleButton toggleCamera1;
     private ToggleButton toggleCamera2;
     private ToggleButton toggleCamera3;
@@ -57,6 +61,7 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
     private AndroidNode androidNode;
     private Float32Topic arm_graspTopic;
     private Int32Topic viewSelectionTopic;
+    private Int32Topic poseSelectionTopic;
     private TwistTopic robot_navTopic;
     private TwistTopic arm_navTopic;
 
@@ -65,6 +70,8 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
     private boolean isRunning = true;
     private boolean isNavigation = true;
     private boolean isManipulation = false;
+    private boolean isOmnidirectional = false;
+
 
     public DirectManipulationInterface() {
         super(TAG, TAG, URI.create(MainActivity.PREFERENCES.getProperty("ROS_MASTER_URI")));
@@ -85,6 +92,10 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
         mjpegView.setDisplayMode(MjpegView.SIZE_BEST_FIT);
         mjpegView.showFps(true);
 
+        toggleOmnidirectional = (ToggleButton)findViewById(R.id.toggleOmmidirectional);
+        toggleGripperPose1 = (ToggleButton)findViewById(R.id.toggleGripperPose1);
+        toggleGripperPose2 = (ToggleButton)findViewById(R.id.toggleGripperPose2);
+        toggleGripperPose3 = (ToggleButton)findViewById(R.id.toggleGripperPose3);
         toggleCamera1 = (ToggleButton)findViewById(R.id.toggleCamera1);
         toggleCamera2 = (ToggleButton)findViewById(R.id.toggleCamera2);
         toggleCamera3 = (ToggleButton)findViewById(R.id.toggleCamera3);
@@ -126,8 +137,14 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
         viewSelectionTopic.setPublisher_int(0);
         viewSelectionTopic.publishNow();
 
+        poseSelectionTopic = new Int32Topic();
+        poseSelectionTopic.publishTo("/android/gripper_pose/selection", false, 100);
+        poseSelectionTopic.setPublishingFreq(10);
+        poseSelectionTopic.setPublisher_int(0);
+        poseSelectionTopic.publishNow();
+
         androidNode = new AndroidNode(NODE_NAME);
-        androidNode.addTopics(viewSelectionTopic);
+        androidNode.addTopics(viewSelectionTopic, poseSelectionTopic);
 
         if ( MainActivity.PREFERENCES.containsKey((getString(R.string.tcp))) )
             androidNode.addTopics(robot_navTopic, arm_navTopic, arm_graspTopic);
@@ -145,6 +162,50 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
         if ( MainActivity.PREFERENCES.containsKey((getString(R.string.udp))) )
             udpCommCommand = new UDPComm( MainActivity.PREFERENCES.getProperty( getString(R.string.MASTER) ) , Integer.parseInt(getString(R.string.udp_port)));
 
+        toggleOmnidirectional.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
+                isOmnidirectional = isChecked;
+                //Toast.makeText(getApplicationContext(), getString(R.string.camera1_name), Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        toggleGripperPose1.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
+                if (isChecked) {
+                    toggleGripperPose2.setChecked(false);
+                    toggleGripperPose3.setChecked(false);
+                    poseSelectionTopic.setPublisher_int(1);
+                    poseSelectionTopic.publishNow();
+                }
+            }
+        });
+
+        toggleGripperPose2.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
+                if (isChecked) {
+                    toggleGripperPose1.setChecked(false);
+                    toggleGripperPose3.setChecked(false);
+                    poseSelectionTopic.setPublisher_int(2);
+                    poseSelectionTopic.publishNow();
+                }
+            }
+        });
+
+        toggleGripperPose3.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
+                if (isChecked) {
+                    toggleGripperPose1.setChecked(false);
+                    toggleGripperPose2.setChecked(false);
+                    poseSelectionTopic.setPublisher_int(3);
+                    poseSelectionTopic.publishNow();
+                }
+            }
+        });
+
         toggleCamera1.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
@@ -159,6 +220,7 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
                     viewSelectionTopic.setPublisher_int(0);
                     viewSelectionTopic.publishNow();
                     virtualJoystickNodeMain.setVisibility(View.INVISIBLE);
+                    toggleOmnidirectional.setVisibility(View.VISIBLE);
                 }
             }
         });
@@ -177,6 +239,7 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
                     viewSelectionTopic.setPublisher_int(1);
                     viewSelectionTopic.publishNow();
                     virtualJoystickNodeMain.setVisibility(View.VISIBLE);
+                    toggleOmnidirectional.setVisibility(View.INVISIBLE);
                 }
             }
         });
@@ -195,6 +258,7 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
                     viewSelectionTopic.setPublisher_int(2);
                     viewSelectionTopic.publishNow();
                     virtualJoystickNodeMain.setVisibility(View.VISIBLE);
+                    toggleOmnidirectional.setVisibility(View.INVISIBLE);
                 }
             }
         });
@@ -210,7 +274,7 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
                     toggleCamera2.setChecked(false);
                     toggleCamera3.setChecked(false);
                     toggleCamera4.setChecked(true);
-                    viewSelectionTopic.setPublisher_int(3);
+                    viewSelectionTopic.setPublisher_int(4);
                     viewSelectionTopic.publishNow();
                     virtualJoystickNodeMain.setVisibility(View.VISIBLE);
                 }
@@ -310,6 +374,12 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
             robot_axisY=-axisX;
             robot_axisZ=-axisZ;
             robot_axisRZ=axisRZ;
+
+            if(false){
+                robot_axisY=0.f;
+                robot_axisRZ=-axisX;
+            }
+
             robot_navTopic.setPublisher_linear(new float[]{robot_axisX, robot_axisY, robot_axisZ});
             robot_navTopic.setPublisher_angular(new float[]{0, 0, robot_axisRZ});
             robot_navTopic.publishNow();
@@ -324,13 +394,12 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
             arm_axisRZ = axisRY/3.f;
             //arm_axisZ=scroller.getValue();
 
-            arm_navTopic.setPublisher_linear(new float[]{arm_axisX, arm_axisY, arm_axisZ });
+            arm_navTopic.setPublisher_linear(new float[]{arm_axisX, arm_axisY, arm_axisZ});
             arm_navTopic.setPublisher_angular(new float[]{arm_axisRX, arm_axisRY, arm_axisRZ});
             arm_graspTopic.setPublisher_float(grasp);
-
-            arm_navTopic.publishNow();
             arm_graspTopic.publishNow();
         }
+        arm_navTopic.publishNow();
 
         /*
         String data="velocity;"+acceleration+";"+steer;

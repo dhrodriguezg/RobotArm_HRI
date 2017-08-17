@@ -52,6 +52,17 @@
         <ToggleButton
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:id="@+id/toggleOmmidirectional"
+            android:textOn="Onmidirectional"
+            android:textOff="Non-omnidirectional"
+            android:checked="false"
+            android:layout_marginBottom="5dp"
+            android:layout_alignParentBottom="true"
+            android:layout_centerHorizontal="true" />
+
+        <ToggleButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:id="@+id/toggleCamera2"
             android:textOn="@string/camera2_name"
             android:textOff="@string/camera2_name"
@@ -92,6 +103,40 @@
             android:layout_marginTop="5dp"
             android:layout_alignParentTop="true"
             android:layout_toRightOf="@+id/toggleCamera3" />
+
+        <ToggleButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/toggleGripperPose1"
+            android:textOn="Gripper Right2Left"
+            android:textOff="Gripper Right2Left"
+            android:checked="false"
+            android:layout_marginRight="5dp"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true" />
+
+        <ToggleButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/toggleGripperPose2"
+            android:textOn="Gripper Front2Back"
+            android:textOff="Gripper Front2Back"
+            android:checked="false"
+            android:layout_marginRight="5dp"
+            android:layout_alignParentRight="true"
+            android:layout_below="@+id/toggleGripperPose1" />
+
+        <ToggleButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/toggleGripperPose3"
+            android:textOn="Gripper Top2Down"
+            android:textOff="Gripper Top2Down"
+            android:checked="false"
+            android:layout_marginRight="5dp"
+            android:layout_alignParentRight="true"
+            android:layout_below="@+id/toggleGripperPose2" />
+
 
         <uniandes.disc.imagine.robotarm_app.teleop.widget.CustomVirtualJoystickView
             android:id="@+id/virtual_joystick"
