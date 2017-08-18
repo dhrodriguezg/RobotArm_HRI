@@ -1,16 +1,20 @@
 package uniandes.disc.imagine.robotarm_app.teleop.interfaces;
 
+import android.content.Context;
 import android.content.Intent;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
@@ -49,6 +53,7 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
     private CustomVirtualJoystickView virtualJoystickNodeMain;
     private RosImageView<CompressedImage> imageStreamNodeMain;
     private ScrollerView scroller = null;
+    private TextView virtualJoystickTitle;
     private ToggleButton toggleOmnidirectional;
     private ToggleButton toggleGripperPose1;
     private ToggleButton toggleGripperPose2;
@@ -64,6 +69,7 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
     private Int32Topic poseSelectionTopic;
     private TwistTopic robot_navTopic;
     private TwistTopic arm_navTopic;
+    private TwistTopic head_targetTopic;
 
     private UDPComm udpCommCommand;
     private MjpegView mjpegView;
@@ -72,6 +78,13 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
     private boolean isManipulation = false;
     private boolean isOmnidirectional = false;
 
+    private static final float NS2S = 1.0f / 1000000000.0f;
+    private float deviceRotZ, deviceRotY;
+    private float timestamp;
+
+    private SensorManager sensorManager;
+    private Sensor gyroscope;
+    private Sensor acelerometer;
 
     public DirectManipulationInterface() {
         super(TAG, TAG, URI.create(MainActivity.PREFERENCES.getProperty("ROS_MASTER_URI")));
@@ -80,6 +93,15 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+
+        deviceRotZ = 0.f;
+        deviceRotY = 0.f;
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        acelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        //sensorManager.registerListener(this, acelerometer, SensorManager.SENSOR_DELAY_FASTEST);
+        sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_FASTEST);
 
     	Intent intent = getIntent();
         setContentView(R.layout.interface_directmanipulation);
@@ -100,6 +122,8 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
         toggleCamera2 = (ToggleButton)findViewById(R.id.toggleCamera2);
         toggleCamera3 = (ToggleButton)findViewById(R.id.toggleCamera3);
         toggleCamera4 = (ToggleButton)findViewById(R.id.toggleCamera4);
+
+        virtualJoystickTitle = (TextView) findViewById(R.id.positionTextView);
 
         scroller = (ScrollerView) findViewById(R.id.scrollerView);
         scroller.setTopValue(-0.1f);
@@ -126,6 +150,10 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
         arm_navTopic.publishTo(getString(R.string.topic_r_arm_nav), false, 10);
         arm_navTopic.setPublishingFreq(10);
 
+        head_targetTopic =  new TwistTopic();
+        head_targetTopic.publishTo("/android/head_target", false, 10);
+        head_targetTopic.setPublishingFreq(10);
+
         arm_graspTopic = new Float32Topic();
         arm_graspTopic.publishTo(getString(R.string.topic_r_arm_grasp), false, 10);
         arm_graspTopic.setPublishingFreq(10);
@@ -144,7 +172,7 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
         poseSelectionTopic.publishNow();
 
         androidNode = new AndroidNode(NODE_NAME);
-        androidNode.addTopics(viewSelectionTopic, poseSelectionTopic);
+        androidNode.addTopics(viewSelectionTopic, poseSelectionTopic, head_targetTopic);
 
         if ( MainActivity.PREFERENCES.containsKey((getString(R.string.tcp))) )
             androidNode.addTopics(robot_navTopic, arm_navTopic, arm_graspTopic);
@@ -302,12 +330,15 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
     public void onResume() {
         super.onResume();
         isRunning =true;
+        //sensorManager.registerListener(this, acelerometer, SensorManager.SENSOR_DELAY_FASTEST);
+        sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_FASTEST);
     }
     
     @Override
     protected void onPause() {
         mjpegView.stopPlayback();
     	super.onPause();
+        sensorManager.unregisterListener(this);
     }
     
     @Override
@@ -369,6 +400,7 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
         if(Math.abs(axisRZ) < 0.01f)
             axisRZ=0.f;
 
+        isNavigation=true;
         if (isNavigation){
             robot_axisX=-axisY;
             robot_axisY=-axisX;
@@ -401,6 +433,8 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
         }
         arm_navTopic.publishNow();
 
+        head_targetTopic.publishNow();
+
         /*
         String data="velocity;"+acceleration+";"+steer;
         if(clameraNumberTopic.getPublisher_int()==2 && ptz!=-1){
@@ -422,12 +456,41 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
     @Override
     public void onSensorChanged(SensorEvent event) {
 
+        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+            float x = event.values[0];
+            float y = event.values[1];
+            float z = event.values[2];
+            Log.i("Acelerometers:","x:" + x + " y:" + y + " z:" + z);
+        }
+        if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
+
+            if (timestamp != 0) {
+                final float dT = (event.timestamp - timestamp) * NS2S;
+                float axisZ = event.values[0] * dT;
+                float axisY = event.values[1] * dT;
+
+                if(Math.abs(axisY) < 0.001)
+                    axisY=0.0f;
+                if(Math.abs(axisZ) < 0.001)
+                    axisZ=0.0f;
+
+                deviceRotY +=axisY;
+                deviceRotZ +=axisZ;
+
+                head_targetTopic.setPublisher_linear(new float[]{0,0,0});
+                head_targetTopic.setPublisher_angular(new float[]{0, deviceRotY, deviceRotZ});
+            }
+            timestamp = event.timestamp;
+
+        }
+
     }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
     }
+
 
     @Override
     protected void init(NodeMainExecutor nodeMainExecutor) {
