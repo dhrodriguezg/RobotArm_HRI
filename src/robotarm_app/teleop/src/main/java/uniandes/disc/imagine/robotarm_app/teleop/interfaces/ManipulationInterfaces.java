@@ -1,17 +1,16 @@
 package uniandes.disc.imagine.robotarm_app.teleop.interfaces;
 
 import android.content.Context;
-import android.content.Intent;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -43,52 +42,51 @@ import uniandes.disc.imagine.robotarm_app.teleop.widget.ScrollerView;
 
 public class ManipulationInterfaces extends RosActivity implements SensorEventListener {
 
-	private static final String TAG = "DirectManipulationInterface";
+    private static final String TAG = "ManipulationInterfaces";
     private static final String NODE_NAME="/android_"+TAG.toLowerCase();
 
     private NodeMainExecutorService nodeMain;
-    private StandardGestureDetector standarGestureDetector = null;
+    private StandardGestureDetector standardGestureDetector = null;
 
-    private CustomVirtualJoystickView virtualJoystickNodeMain;
-    private RosImageView<CompressedImage> imageStreamNodeMain;
+    private RosImageView<CompressedImage> nodeMainImageStream;
+    private CustomVirtualJoystickView nodeMainVirtualJoystick01=null;
+    private CustomVirtualJoystickView nodeMainVirtualJoystick02=null;
     private ScrollerView scroller = null;
-    private TextView virtualJoystickTitle;
-    private ToggleButton toggleOmnidirectional;
-    private ToggleButton toggleGripperPose1;
-    private ToggleButton toggleGripperPose2;
-    private ToggleButton toggleGripperPose3;
+
+    private ToggleButton toggleStart;
     private ToggleButton toggleCamera1;
     private ToggleButton toggleCamera2;
-    private ToggleButton toggleCamera3;
-    private ToggleButton toggleCamera4;
+    private Button resetCamera;
+
+    private TextView virtualJoystickTitle01;
+    private TextView virtualJoystickTitle02;
+    private TextView scrollerTitle;
 
     private AndroidNode androidNode;
-    private Float32Topic arm_graspTopic;
-    private Int32Topic viewSelectionTopic;
-    private Int32Topic poseSelectionTopic;
-    private TwistTopic robot_navTopic;
-    private TwistTopic arm_navTopic;
+    private Float32Topic endeffector_graspTopic;
+    private TwistTopic endeffector_navTopic;
     private TwistTopic head_targetTopic;
+    private Int32Topic camera_selectionTopic;
+    private Int32Topic interface_numberTopic;
 
     private UDPComm udpCommCommand;
     private MjpegView mjpegView;
     private boolean isRunning = true;
-    private boolean isNavigation = true;
-    private boolean isManipulation = false;
-    private boolean isOmnidirectional = false;
 
     private static final float NS2S = 1.0f / 1000000000.0f;
-    private float deviceRotZ, deviceRotY;
-    private float timestamp;
+    private static final float MS2S = 1.0f / 1000.0f;
+    private static final float MAXRADSPS = 20.f / 57.3f ; //10 degrees per second
+    private float headRotZ, headRotY;
+    private float nanotimestamp;
+    private int datarate = 20;
 
     private SensorManager sensorManager;
     private Sensor gyroscope;
-    private Sensor acelerometer;
 
-    private int MAN_INTERFACE = 0;
-    private static final int INTERFACE_01 = 1;
-    private static final int INTERFACE_02 = 2;
-    private static final int INTERFACE_03 = 3;
+    private int MAN_INTERFACE;
+    private int INTERFACE_01;
+    private int INTERFACE_02;
+    private int INTERFACE_03;
 
     public ManipulationInterfaces() {
         super(TAG, TAG, URI.create(MainActivity.PREFERENCES.getProperty("ROS_MASTER_URI")));
@@ -98,168 +96,152 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        androidNode = new AndroidNode(NODE_NAME);
+        INTERFACE_01 = Integer.parseInt(getString(R.string.interface_manipulation_01_number));
+        INTERFACE_02 = Integer.parseInt(getString(R.string.interface_manipulation_02_number));
+        INTERFACE_03 = Integer.parseInt(getString(R.string.interface_manipulation_03_number));
+
+        headRotZ = 0.f;
+        headRotY = 0.f;
+
         if (MainActivity.PREFERENCES.containsKey((getString(R.string.manipulation01))))
-            MAN_INTERFACE = INTERFACE_01;
+            MAN_INTERFACE =INTERFACE_01;
         if (MainActivity.PREFERENCES.containsKey((getString(R.string.manipulation02))))
-            MAN_INTERFACE = INTERFACE_02;
+            MAN_INTERFACE =INTERFACE_02;
         if (MainActivity.PREFERENCES.containsKey((getString(R.string.manipulation03))))
-            MAN_INTERFACE = INTERFACE_03;
+            MAN_INTERFACE =INTERFACE_03;
 
-        deviceRotZ = 0.f;
-        deviceRotY = 0.f;
-        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        acelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-        //sensorManager.registerListener(this, acelerometer, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_FASTEST);
-
-    	Intent intent = getIntent();
-        setContentView(R.layout.interface_directmanipulation);
+        //Intent intent = getIntent();
+        setContentView(R.layout.manipulation_interfaces);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        //textPTZ = (TextView) findViewById(R.id.rotationTextView); UDP
+        nodeMainImageStream = (RosImageView<CompressedImage>) findViewById(R.id.streamingView);
+        nodeMainImageStream.setTopicName(getString(R.string.topic_streaming));
+        nodeMainImageStream.setMessageType(getString(R.string.topic_streaming_msg));
+        nodeMainImageStream.setMessageToBitmapCallable(new BitmapFromCompressedImage());
+        nodeMainImageStream.setScaleType(ImageView.ScaleType.FIT_CENTER);
 
         mjpegView = (MjpegView) findViewById(R.id.mjpegView);
         mjpegView.setDisplayMode(MjpegView.SIZE_BEST_FIT);
         mjpegView.showFps(true);
 
-        toggleOmnidirectional = (ToggleButton)findViewById(R.id.toggleOmmidirectional);
-        toggleGripperPose1 = (ToggleButton)findViewById(R.id.toggleGripperPose1);
-        toggleGripperPose2 = (ToggleButton)findViewById(R.id.toggleGripperPose2);
-        toggleGripperPose3 = (ToggleButton)findViewById(R.id.toggleGripperPose3);
-        toggleCamera1 = (ToggleButton)findViewById(R.id.toggleCamera1);
-        toggleCamera2 = (ToggleButton)findViewById(R.id.toggleCamera2);
-        toggleCamera3 = (ToggleButton)findViewById(R.id.toggleCamera3);
-        toggleCamera4 = (ToggleButton)findViewById(R.id.toggleCamera4);
-
-        virtualJoystickTitle = (TextView) findViewById(R.id.positionTextView);
-
+        nodeMainVirtualJoystick01 = (CustomVirtualJoystickView) findViewById(R.id.virtual_joystick_01);
+        nodeMainVirtualJoystick02 = (CustomVirtualJoystickView) findViewById(R.id.virtual_joystick_02);
         scroller = (ScrollerView) findViewById(R.id.scrollerView);
-        scroller.setTopValue(-0.1f);
-        scroller.setBottomValue(0.1f);
-        scroller.setFontSize(13);
-        scroller.setMaxTotalItems(5);
-        scroller.setMaxVisibleItems(5);
-        scroller.resetOnRelease();
-        scroller.beginAtMiddle();
 
-        virtualJoystickNodeMain = (CustomVirtualJoystickView) findViewById(R.id.virtual_joystick);
-        virtualJoystickNodeMain.setHolonomic(true);
+        toggleStart = (ToggleButton) findViewById(R.id.toggleStart);
+        toggleCamera1 = (ToggleButton) findViewById(R.id.toggleCamera1);
+        toggleCamera2 = (ToggleButton) findViewById(R.id.toggleCamera2);
+        resetCamera = (Button) findViewById(R.id.resetCameraButton);
 
-        imageStreamNodeMain = (RosImageView<CompressedImage>) findViewById(R.id.streamingView);
-        imageStreamNodeMain.setTopicName(getString(R.string.topic_streaming));
-        imageStreamNodeMain.setMessageType(getString(R.string.topic_streaming_msg));
-        imageStreamNodeMain.setMessageToBitmapCallable(new BitmapFromCompressedImage());
-        imageStreamNodeMain.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        virtualJoystickTitle01 = (TextView) findViewById(R.id.scrollerTextView01);
+        virtualJoystickTitle02 = (TextView) findViewById(R.id.scrollerTextView02);
+        scrollerTitle = (TextView) findViewById(R.id.scrollTextView);
 
-        robot_navTopic =  new TwistTopic();
-        robot_navTopic.publishTo(getString(R.string.topic_robot_nav), false, 10);
-        robot_navTopic.setPublishingFreq(10);
 
-        arm_navTopic =  new TwistTopic();
-        arm_navTopic.publishTo(getString(R.string.topic_r_arm_nav), false, 10);
-        arm_navTopic.setPublishingFreq(10);
+        if (MAN_INTERFACE ==INTERFACE_01){
+
+            scroller.setVisibility(View.GONE);
+            scrollerTitle.setVisibility(View.GONE);
+
+            nodeMainVirtualJoystick01.setHolonomic(true);
+            nodeMainVirtualJoystick02.setHolonomic(true);
+            nodeMainVirtualJoystick01.setVisibility(View.VISIBLE);
+            nodeMainVirtualJoystick02.setVisibility(View.VISIBLE);
+            virtualJoystickTitle01.setVisibility(View.VISIBLE);
+            virtualJoystickTitle02.setVisibility(View.VISIBLE);
+        }
+        if (MAN_INTERFACE ==INTERFACE_02){
+
+            nodeMainVirtualJoystick01.setVisibility(View.GONE);
+            nodeMainVirtualJoystick02.setVisibility(View.GONE);
+            virtualJoystickTitle01.setVisibility(View.GONE);
+            virtualJoystickTitle02.setVisibility(View.GONE);
+            scroller.setVisibility(View.GONE);
+            scrollerTitle.setVisibility(View.GONE);
+
+            if ( MainActivity.PREFERENCES.containsKey((getString(R.string.ros_cimage))) ) {
+                standardGestureDetector = new StandardGestureDetector(this, nodeMainImageStream);
+            }else if( MainActivity.PREFERENCES.containsKey((getString(R.string.mjpeg))) ){
+                standardGestureDetector = new StandardGestureDetector(this, mjpegView);
+            }
+
+        }
+        if (MAN_INTERFACE ==INTERFACE_03){
+
+            nodeMainVirtualJoystick01.setVisibility(View.GONE);
+            nodeMainVirtualJoystick02.setVisibility(View.GONE);
+            virtualJoystickTitle01.setVisibility(View.GONE);
+            virtualJoystickTitle02.setVisibility(View.GONE);
+
+            sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+            gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+            sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_FASTEST);
+            scroller.setTopValue(-1.f);
+            scroller.setBottomValue(1.f);
+            scroller.setFontSize(13);
+            scroller.setMaxTotalItems(3);
+            scroller.setMaxVisibleItems(3);
+            scroller.beginAtMiddle();
+            scroller.resetOnRelease();
+            scroller.setVisibility(View.VISIBLE);
+            scrollerTitle.setVisibility(View.VISIBLE);
+        }
+
+        resetCamera.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                headRotZ = 0.f;
+                headRotY = 0.f;
+            }
+        });
+
+        endeffector_navTopic =  new TwistTopic();
+        endeffector_navTopic.publishTo(getString(R.string.topic_r_arm_nav), false, 10);
+        endeffector_navTopic.setPublishingFreq(10);
 
         head_targetTopic =  new TwistTopic();
         head_targetTopic.publishTo(getString(R.string.topic_head_target), false, 10);
         head_targetTopic.setPublishingFreq(10);
 
-        arm_graspTopic = new Float32Topic();
-        arm_graspTopic.publishTo(getString(R.string.topic_r_arm_grasp), false, 10);
-        arm_graspTopic.setPublishingFreq(10);
-        arm_graspTopic.setPublisher_float(0.0f);
+        endeffector_graspTopic = new Float32Topic();
+        endeffector_graspTopic.publishTo(getString(R.string.topic_r_arm_grasp), false, 10);
+        endeffector_graspTopic.setPublishingFreq(10);
+        endeffector_graspTopic.setPublisher_float(0.0f);
 
-        viewSelectionTopic = new Int32Topic();
-        viewSelectionTopic.publishTo(getString(R.string.topic_camera_number), false, 100);
-        viewSelectionTopic.setPublishingFreq(10);
-        viewSelectionTopic.setPublisher_int(0);
-        viewSelectionTopic.publishNow();
+        camera_selectionTopic = new Int32Topic();
+        camera_selectionTopic.publishTo(getString(R.string.topic_camera_number), true, 10);
+        camera_selectionTopic.setPublishingFreq(100);
+        camera_selectionTopic.setPublisher_int(1);
+        camera_selectionTopic.publishNow();
 
-        poseSelectionTopic = new Int32Topic();
-        poseSelectionTopic.publishTo(getString(R.string.topic_gripper_pose_preset), false, 100);
-        poseSelectionTopic.setPublishingFreq(10);
-        poseSelectionTopic.setPublisher_int(0);
-        poseSelectionTopic.publishNow();
+        interface_numberTopic = new Int32Topic();
+        interface_numberTopic.publishTo(getString(R.string.topic_interfacenumber), true, 10);
+        interface_numberTopic.setPublishingFreq(100);
+        interface_numberTopic.setPublisher_int(MAN_INTERFACE);
+        interface_numberTopic.publishNow();
 
-        androidNode = new AndroidNode(NODE_NAME);
-        androidNode.addTopics(viewSelectionTopic, poseSelectionTopic, head_targetTopic);
+        androidNode.addTopics(camera_selectionTopic, interface_numberTopic);
 
         if ( MainActivity.PREFERENCES.containsKey((getString(R.string.tcp))) )
-            androidNode.addTopics(robot_navTopic, arm_navTopic, arm_graspTopic);
-        if ( MainActivity.PREFERENCES.containsKey((getString(R.string.ros_cimage))) ) {
-            androidNode.addNodeMain(imageStreamNodeMain);
-            standarGestureDetector = new StandardGestureDetector(this, imageStreamNodeMain);
-        }else
-            imageStreamNodeMain.setVisibility(View.GONE);
-        if ( !MainActivity.PREFERENCES.containsKey((getString(R.string.mjpeg))) )
-            mjpegView.setVisibility(View.GONE);
-        else {
-            standarGestureDetector = new StandardGestureDetector(this, mjpegView);
-        }
-
-        if ( MainActivity.PREFERENCES.containsKey((getString(R.string.udp))) )
+            androidNode.addTopics(endeffector_navTopic, head_targetTopic, endeffector_graspTopic);
+        else if ( MainActivity.PREFERENCES.containsKey((getString(R.string.udp))) )
             udpCommCommand = new UDPComm( MainActivity.PREFERENCES.getProperty( getString(R.string.MASTER) ) , Integer.parseInt(getString(R.string.udp_port)));
 
-        toggleOmnidirectional.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
-                isOmnidirectional = isChecked;
-                //Toast.makeText(getApplicationContext(), getString(R.string.camera1_name), Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        toggleGripperPose1.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
-                if (isChecked) {
-                    toggleGripperPose2.setChecked(false);
-                    toggleGripperPose3.setChecked(false);
-                    poseSelectionTopic.setPublisher_int(1);
-                    poseSelectionTopic.publishNow();
-                }
-            }
-        });
-
-        toggleGripperPose2.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
-                if (isChecked) {
-                    toggleGripperPose1.setChecked(false);
-                    toggleGripperPose3.setChecked(false);
-                    poseSelectionTopic.setPublisher_int(2);
-                    poseSelectionTopic.publishNow();
-                }
-            }
-        });
-
-        toggleGripperPose3.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
-                if (isChecked) {
-                    toggleGripperPose1.setChecked(false);
-                    toggleGripperPose2.setChecked(false);
-                    poseSelectionTopic.setPublisher_int(3);
-                    poseSelectionTopic.publishNow();
-                }
-            }
-        });
+        if ( MainActivity.PREFERENCES.containsKey((getString(R.string.ros_cimage))) ) {
+            mjpegView.setVisibility(View.GONE);
+            androidNode.addNodeMain(nodeMainImageStream);
+        }else if( MainActivity.PREFERENCES.containsKey((getString(R.string.mjpeg))) ){
+            nodeMainImageStream.setVisibility(View.GONE);
+        }
 
         toggleCamera1.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
                 if (isChecked) {
-                    isNavigation = true;
-                    isManipulation = false;
-                    //Toast.makeText(getApplicationContext(), getString(R.string.camera1_name), Toast.LENGTH_SHORT).show();
-                    toggleCamera1.setChecked(true);
-                    toggleCamera2.setChecked(false);
-                    toggleCamera3.setChecked(false);
-                    toggleCamera4.setChecked(false);
-                    viewSelectionTopic.setPublisher_int(0);
-                    viewSelectionTopic.publishNow();
-                    virtualJoystickNodeMain.setVisibility(View.INVISIBLE);
-                    toggleOmnidirectional.setVisibility(View.VISIBLE);
+                    camera_selectionTopic.setPublisher_int(1);
+                    camera_selectionTopic.publishNow();
                 }
             }
         });
@@ -268,54 +250,8 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
             @Override
             public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
                 if (isChecked) {
-                    isNavigation = false;
-                    isManipulation = true;
-                    //Toast.makeText(getApplicationContext(), getString(R.string.camera2_name), Toast.LENGTH_SHORT).show();
-                    toggleCamera1.setChecked(false);
-                    toggleCamera2.setChecked(true);
-                    toggleCamera3.setChecked(false);
-                    toggleCamera4.setChecked(false);
-                    viewSelectionTopic.setPublisher_int(1);
-                    viewSelectionTopic.publishNow();
-                    virtualJoystickNodeMain.setVisibility(View.VISIBLE);
-                    toggleOmnidirectional.setVisibility(View.INVISIBLE);
-                }
-            }
-        });
-
-        toggleCamera3.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
-                if (isChecked) {
-                    isNavigation = false;
-                    isManipulation = true;
-                    //Toast.makeText(getApplicationContext(), getString(R.string.camera3_name), Toast.LENGTH_SHORT).show();
-                    toggleCamera1.setChecked(false);
-                    toggleCamera2.setChecked(false);
-                    toggleCamera3.setChecked(true);
-                    toggleCamera4.setChecked(false);
-                    viewSelectionTopic.setPublisher_int(2);
-                    viewSelectionTopic.publishNow();
-                    virtualJoystickNodeMain.setVisibility(View.VISIBLE);
-                    toggleOmnidirectional.setVisibility(View.INVISIBLE);
-                }
-            }
-        });
-
-        toggleCamera4.setOnCheckedChangeListener( new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
-                if(isChecked){
-                    isNavigation = false;
-                    isManipulation = true;
-                    //Toast.makeText(getApplicationContext(), getString(R.string.camera4_name), Toast.LENGTH_SHORT).show();
-                    toggleCamera1.setChecked(false);
-                    toggleCamera2.setChecked(false);
-                    toggleCamera3.setChecked(false);
-                    toggleCamera4.setChecked(true);
-                    viewSelectionTopic.setPublisher_int(4);
-                    viewSelectionTopic.publishNow();
-                    virtualJoystickNodeMain.setVisibility(View.VISIBLE);
+                    camera_selectionTopic.setPublisher_int(2);
+                    camera_selectionTopic.publishNow();
                 }
             }
         });
@@ -326,7 +262,7 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
                     mjpegView.setSource(MjpegInputStream.read(MainActivity.PREFERENCES.getProperty(getString(R.string.STREAM_URL), "")));
                 while(isRunning){
                     try {
-                        Thread.sleep(20);
+                        Thread.sleep(datarate);
                         sendData2Core();
                     } catch (InterruptedException e) {
                         e.getStackTrace();
@@ -341,17 +277,18 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
     public void onResume() {
         super.onResume();
         isRunning =true;
-        //sensorManager.registerListener(this, acelerometer, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_FASTEST);
+        if (MAN_INTERFACE ==INTERFACE_03)
+            sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_FASTEST);
     }
-    
+
     @Override
     protected void onPause() {
         mjpegView.stopPlayback();
-    	super.onPause();
-        sensorManager.unregisterListener(this);
+        if (MAN_INTERFACE ==INTERFACE_03)
+            sensorManager.unregisterListener(this);
+        super.onPause();
     }
-    
+
     @Override
     public void onDestroy() {
         nodeMain.forceShutdown();
@@ -360,7 +297,7 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
         isRunning =false;
         super.onDestroy();
     }
-    
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         return true;
@@ -373,110 +310,97 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
 
     private void sendData2Core() {
 
-        runOnUiThread(new Runnable() {
-            public void run() {
-                scroller.updateView();
-            }
-        });
-
-        /*if(!standarGestureDetector.isDetectingGesture()){
+        if(!toggleStart.isChecked())
             return;
-        }*/
 
-        float robot_axisX = 0.f;
-        float robot_axisY = 0.f;
-        float robot_axisZ = 0.f;
-        float robot_axisRZ = 0.f;
-        float arm_axisX = 0.f;
-        float arm_axisY= 0.f;
-        float arm_axisZ = 0.f;
-        float arm_axisRX = 0.f;
-        float arm_axisRY= 0.f;
-        float arm_axisRZ = 0.f;
-        float grasp = 1-standarGestureDetector.getGrasp();
-        float axisX = standarGestureDetector.getTargetX();
-        float axisY = standarGestureDetector.getTargetY();
-        float axisZ = standarGestureDetector.getThridDimension();
-        float axisRX = virtualJoystickNodeMain.getAxisX();
-        float axisRY = virtualJoystickNodeMain.getAxisY();
-        float axisRZ = standarGestureDetector.getRotation()/180.f;
+        float endeffector_axisX = 0.f;
+        float endeffector_axisY = 0.f;
+        float endeffector_axisZ = 0.f;
+        float endeffector_axisRX = 0.f;
+        float endeffector_axisRY = 0.f;
+        float endeffector_axisRZ = 0.f;
+        float endeffector_grasp = 0.f;
 
+        float head_axisX = 0.f;
+        float head_axisY = 0.f;
+        float head_axisZ = 0.f;
+        float head_axisRX = 0.f;
+        float head_axisRY = 0.f;
+        float head_axisRZ = 0.f;
 
-        if(Math.abs(axisX) < 0.01f)
-            axisX=0.f;
-        if(Math.abs(axisY) < 0.01f)
-            axisY=0.f;
-        if(Math.abs(axisZ) < 0.01f)
-            axisZ=0.f;
-        if(Math.abs(axisRZ) < 0.01f)
-            axisRZ=0.f;
-
-        //isNavigation=true;
-        if (isNavigation){
-            robot_axisX=-axisY;
-            robot_axisY=-axisX;
-            robot_axisZ=-axisZ;
-            robot_axisRZ=axisRZ;
-
-            if(false){
-                robot_axisY=0.f;
-                robot_axisRZ=-axisX;
-            }
-
-            robot_navTopic.setPublisher_linear(new float[]{robot_axisX, robot_axisY, robot_axisZ});
-            robot_navTopic.setPublisher_angular(new float[]{0, 0, robot_axisRZ});
-            robot_navTopic.publishNow();
+        if ( MainActivity.PREFERENCES.containsKey((getString(R.string.udp))) ){
+            //Do something with UDPcommand...
+            return;
         }
-        if (isManipulation){
-            arm_axisX=-axisY/2.f;
-            arm_axisY=-axisX/2.f;
-            arm_axisZ=-axisZ/2.f;
+
+        final float dT = datarate*MS2S;
+
+        if(MAN_INTERFACE == INTERFACE_01){
+
+            endeffector_axisX =  nodeMainVirtualJoystick01.getAxisX();
+            endeffector_axisRZ = nodeMainVirtualJoystick01.getAxisY();
+
+            headRotY -= (nodeMainVirtualJoystick02.getAxisX()*dT*MAXRADSPS);
+            headRotZ += (nodeMainVirtualJoystick02.getAxisY()*dT*MAXRADSPS);
+            head_axisRY= headRotY;
+            head_axisRZ= headRotZ;
+
+        }
+        if(MAN_INTERFACE == INTERFACE_02){//TODO
+            if(!standardGestureDetector.isDetectingGesture())
+                return;
+
+            endeffector_axisX=-standardGestureDetector.getTargetY()/2.f;
+            endeffector_axisY=-standardGestureDetector.getTargetX()/2.f;
+            endeffector_axisZ=-standardGestureDetector.getThridDimension()/2.f;
             // Yaw=Z, Pitch=Y, Roll=X
-            arm_axisRX = -axisRX/3.f;
-            arm_axisRY = -axisRZ;
-            arm_axisRZ = axisRY/3.f;
-            //arm_axisZ=scroller.getValue();
+            endeffector_axisRX = 0.f;
+            endeffector_axisRY = -standardGestureDetector.getRotation()/180.f;
+            endeffector_axisRZ = 0.f;
 
-            arm_navTopic.setPublisher_linear(new float[]{arm_axisX, arm_axisY, arm_axisZ});
-            arm_navTopic.setPublisher_angular(new float[]{arm_axisRX, arm_axisRY, arm_axisRZ});
-            arm_graspTopic.setPublisher_float(grasp);
-            arm_graspTopic.publishNow();
         }
-        arm_navTopic.publishNow();
+        if(MAN_INTERFACE == INTERFACE_03){
+            runOnUiThread(new Runnable() {
+                public void run() {
+                    scroller.updateView();
+                }
+            });
+            endeffector_axisX=scroller.getValue();
+            head_axisRY= headRotY;
+            head_axisRZ= headRotZ;
+        }
 
+        if(Math.abs(endeffector_axisX) < 0.01f)
+            endeffector_axisX=0.f;
+        if(Math.abs(endeffector_axisY) < 0.01f)
+            endeffector_axisY=0.f;
+        if(Math.abs(endeffector_axisZ) < 0.01f)
+            endeffector_axisZ=0.f;
+
+        endeffector_navTopic.setPublisher_linear(new float[]{endeffector_axisX, endeffector_axisY, endeffector_axisZ});
+        endeffector_navTopic.setPublisher_angular(new float[]{endeffector_axisRX, endeffector_axisRY, endeffector_axisRZ});
+        endeffector_navTopic.publishNow();
+        endeffector_graspTopic.setPublisher_float(endeffector_grasp);
+        endeffector_graspTopic.publishNow();
+        head_targetTopic.setPublisher_linear(new float[]{head_axisX, head_axisY, head_axisZ});
+        head_targetTopic.setPublisher_angular(new float[]{head_axisRX, head_axisRY, head_axisRZ});
         head_targetTopic.publishNow();
-
-        /*
-        String data="velocity;"+acceleration+";"+steer;
-        if(clameraNumberTopic.getPublisher_int()==2 && ptz!=-1){
-            data+=";ptz;"+ptz;
-        }else{
-            ptz=-1;
-        }
-
-        if ( MainActivity.PREFERENCES.containsKey((getString(R.string.udp))) )
-            udpCommCommand.sendData(data.getBytes());
-        */
-
-        if ( MainActivity.PREFERENCES.containsKey((getString(R.string.tcp))) ){
-            //send topics
-        }
 
     }
 
     @Override
     public void onSensorChanged(SensorEvent event) {
 
-        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-            float x = event.values[0];
-            float y = event.values[1];
-            float z = event.values[2];
-            Log.i("Acelerometers:","x:" + x + " y:" + y + " z:" + z);
-        }
+        if (MAN_INTERFACE !=INTERFACE_03)
+            return;
+
+        if(!toggleStart.isChecked())
+            return;
+
         if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
 
-            if (timestamp != 0) {
-                final float dT = (event.timestamp - timestamp) * NS2S;
+            if (nanotimestamp != 0) {
+                final float dT = (event.timestamp - nanotimestamp) * NS2S;
                 float axisZ = event.values[0] * dT;
                 float axisY = event.values[1] * dT;
 
@@ -485,16 +409,17 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
                 if(Math.abs(axisZ) < 0.001)
                     axisZ=0.0f;
 
-                deviceRotY +=axisY;
-                deviceRotZ +=axisZ;
-
-                head_targetTopic.setPublisher_linear(new float[]{0,0,0});
-                head_targetTopic.setPublisher_angular(new float[]{0, deviceRotY, deviceRotZ});
+                headRotY += axisY;
+                headRotZ += axisZ;
             }
-            timestamp = event.timestamp;
-
+            nanotimestamp = event.timestamp;
         }
 
+        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+            float x = event.values[0];
+            float y = event.values[1];
+            float z = event.values[2];
+        }
     }
 
     @Override

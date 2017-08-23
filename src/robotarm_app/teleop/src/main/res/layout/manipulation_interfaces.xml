@@ -28,11 +28,12 @@
             android:layout_height="0dp"
             app:layout_heightPercent="15%"
             app:layout_widthPercent="10%"
-            android:src="@drawable/front_arrow"
+            android:src="@drawable/target_cool"
             android:id="@+id/targetView"
             android:alpha="0.5"
             android:layout_centerVertical="true"
-            android:layout_centerHorizontal="true" />
+            android:layout_centerHorizontal="true"
+            android:visibility="invisible" />
 
         <uniandes.disc.imagine.robotarm_app.teleop.widget.ScrollerView
             android:layout_width="0dp"
@@ -118,6 +119,27 @@
         <ToggleButton
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:textOn="@string/text_togglebuttonOnOff1"
+            android:textOff="@string/text_togglebuttonOnOff1"
+            android:id="@+id/toggleCamera1"
+            android:layout_alignParentTop="true"
+            android:layout_toLeftOf="@+id/targetView"
+            android:layout_marginTop="10dp"
+            android:checked="true" />
+
+        <ToggleButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textOn="@string/text_togglebuttonOnOff2"
+            android:textOff="@string/text_togglebuttonOnOff2"
+            android:id="@+id/toggleCamera2"
+            android:layout_alignParentTop="true"
+            android:layout_toRightOf="@+id/targetView"
+            android:layout_marginTop="10dp"/>
+
+        <ToggleButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:textAppearance="?android:attr/textAppearanceLarge"
             android:textOn="@string/text_togglebuttonOn"
             android:textOff="@string/text_togglebuttonOff"
@@ -125,15 +147,6 @@
             android:layout_alignParentBottom="true"
             android:layout_centerHorizontal="true"
             android:layout_marginBottom="5dp" />
-
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/text_button1"
-            android:id="@+id/resetCameraButton"
-            android:layout_alignParentTop="true"
-            android:layout_centerHorizontal="true"
-            android:layout_marginTop="5dp" />
 
     </android.support.percent.PercentRelativeLayout>
 

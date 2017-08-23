@@ -11,7 +11,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.ToggleButton;
@@ -45,13 +44,14 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
     private static final String NODE_NAME="/android_"+TAG.toLowerCase();
 
     private NodeMainExecutorService nodeMain;
-    private StandardGestureDetector standarGestureDetector = null;
+    private StandardGestureDetector standardGestureDetector = null;
 
     private RosImageView<CompressedImage> nodeMainImageStream;
     private CustomVirtualJoystickView nodeMainVirtualJoystick01=null;
     private CustomVirtualJoystickView nodeMainVirtualJoystick02=null;
     private ScrollerView scroller = null;
 
+    private ImageView targetView;
     private ToggleButton toggleStart;
     private Button resetCamera;
 
@@ -122,6 +122,8 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
         mjpegView.setDisplayMode(MjpegView.SIZE_BEST_FIT);
         mjpegView.showFps(true);
 
+        targetView = (ImageView) findViewById(R.id.targetView);
+
         nodeMainVirtualJoystick01 = (CustomVirtualJoystickView) findViewById(R.id.virtual_joystick_01);
         nodeMainVirtualJoystick02 = (CustomVirtualJoystickView) findViewById(R.id.virtual_joystick_02);
         scroller = (ScrollerView) findViewById(R.id.scrollerView);
@@ -156,9 +158,9 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
             scrollerTitle.setVisibility(View.GONE);
 
             if ( MainActivity.PREFERENCES.containsKey((getString(R.string.ros_cimage))) ) {
-                standarGestureDetector = new StandardGestureDetector(this, nodeMainImageStream);
+                standardGestureDetector = new StandardGestureDetector(this, nodeMainImageStream);
             }else if( MainActivity.PREFERENCES.containsKey((getString(R.string.mjpeg))) ){
-                standarGestureDetector = new StandardGestureDetector(this, mjpegView);
+                standardGestureDetector = new StandardGestureDetector(this, mjpegView);
             }
 
         }
@@ -314,13 +316,13 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
             head_axisRZ= headRotZ;
 
         }
-        if(NAV_INTERFACE == INTERFACE_02){
-            if(!standarGestureDetector.isDetectingGesture())
+        if(NAV_INTERFACE == INTERFACE_02){//TODO
+            if(!standardGestureDetector.isDetectingGesture())
                 return;
-            float axisX = standarGestureDetector.getTargetX();
-            float axisY = standarGestureDetector.getTargetY();
-            float axisZ = standarGestureDetector.getThridDimension();
-            float axisRZ = standarGestureDetector.getRotation()/180.f;
+            float axisX = standardGestureDetector.getTargetX();
+            float axisY = standardGestureDetector.getTargetY();
+            float axisZ = standardGestureDetector.getThridDimension();
+            float axisRZ = standardGestureDetector.getRotation()/180.f;
         }
         if(NAV_INTERFACE == INTERFACE_03){
             runOnUiThread(new Runnable() {
@@ -340,7 +342,7 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
         if(Math.abs(robot_axisZ) < 0.01f)
             robot_axisZ=0.f;
 
-
+        targetView.setRotationX(90.f-head_axisRY*180.f/3.141592654f);
         robot_navTopic.setPublisher_linear(new float[]{robot_axisX, robot_axisY, robot_axisZ});
         robot_navTopic.setPublisher_angular(new float[]{robot_axisRX, robot_axisRY, robot_axisRZ});
         robot_navTopic.publishNow();
