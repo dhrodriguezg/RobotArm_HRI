@@ -15,7 +15,6 @@ import android.view.WindowManager;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 import android.widget.ToggleButton;
 
 import org.ros.android.BitmapFromCompressedImage;
@@ -42,8 +41,8 @@ import uniandes.disc.imagine.robotarm_app.teleop.widget.CustomVirtualJoystickVie
 import uniandes.disc.imagine.robotarm_app.teleop.widget.ScrollerView;
 
 
-public class DirectManipulationInterface extends RosActivity implements SensorEventListener {
-	
+public class ManipulationInterfaces extends RosActivity implements SensorEventListener {
+
 	private static final String TAG = "DirectManipulationInterface";
     private static final String NODE_NAME="/android_"+TAG.toLowerCase();
 
@@ -86,7 +85,12 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
     private Sensor gyroscope;
     private Sensor acelerometer;
 
-    public DirectManipulationInterface() {
+    private int MAN_INTERFACE = 0;
+    private static final int INTERFACE_01 = 1;
+    private static final int INTERFACE_02 = 2;
+    private static final int INTERFACE_03 = 3;
+
+    public ManipulationInterfaces() {
         super(TAG, TAG, URI.create(MainActivity.PREFERENCES.getProperty("ROS_MASTER_URI")));
     }
 
@@ -94,6 +98,12 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        if (MainActivity.PREFERENCES.containsKey((getString(R.string.manipulation01))))
+            MAN_INTERFACE = INTERFACE_01;
+        if (MainActivity.PREFERENCES.containsKey((getString(R.string.manipulation02))))
+            MAN_INTERFACE = INTERFACE_02;
+        if (MainActivity.PREFERENCES.containsKey((getString(R.string.manipulation03))))
+            MAN_INTERFACE = INTERFACE_03;
 
         deviceRotZ = 0.f;
         deviceRotY = 0.f;
@@ -131,6 +141,7 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
         scroller.setFontSize(13);
         scroller.setMaxTotalItems(5);
         scroller.setMaxVisibleItems(5);
+        scroller.resetOnRelease();
         scroller.beginAtMiddle();
 
         virtualJoystickNodeMain = (CustomVirtualJoystickView) findViewById(R.id.virtual_joystick);
@@ -400,7 +411,7 @@ public class DirectManipulationInterface extends RosActivity implements SensorEv
         if(Math.abs(axisRZ) < 0.01f)
             axisRZ=0.f;
 
-        isNavigation=true;
+        //isNavigation=true;
         if (isNavigation){
             robot_axisX=-axisY;
             robot_axisY=-axisX;

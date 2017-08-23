@@ -33,21 +33,19 @@
             android:layout_alignParentBottom="true"
             android:layout_alignParentRight="true"
             android:layout_marginRight="5dp"
-            android:layout_marginBottom="5dp"
-            android:visibility="gone" />
+            android:layout_marginBottom="5dp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="20dp"
             android:textAppearance="?android:attr/textAppearanceSmall"
-            android:text="@string/grasping_open"
+            android:text="grasping_open"
             android:id="@+id/scrollTextView"
             android:gravity="center_vertical|center_horizontal"
             android:textColor="#ff797979"
             android:layout_above="@+id/scrollerView"
             android:layout_alignLeft="@+id/scrollerView"
-            android:layout_alignRight="@+id/scrollerView"
-            android:visibility="gone" />
+            android:layout_alignRight="@+id/scrollerView" />
 
         <ToggleButton
             android:layout_width="wrap_content"
@@ -64,8 +62,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:id="@+id/toggleCamera2"
-            android:textOn="@string/camera2_name"
-            android:textOff="@string/camera2_name"
+            android:textOn="camera2_name"
+            android:textOff="camera2_name"
             android:checked="false"
             android:layout_marginTop="5dp"
             android:layout_alignParentTop="true"
@@ -75,8 +73,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:id="@+id/toggleCamera1"
-            android:textOn="@string/camera1_name"
-            android:textOff="@string/camera1_name"
+            android:textOn="camera1_name"
+            android:textOff="camera1_name"
             android:checked="true"
             android:layout_marginTop="5dp"
             android:layout_alignParentTop="true"
@@ -86,8 +84,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:id="@+id/toggleCamera3"
-            android:textOn="@string/camera3_name"
-            android:textOff="@string/camera3_name"
+            android:textOn="camera3_name"
+            android:textOff="camera3_name"
             android:checked="false"
             android:layout_marginTop="5dp"
             android:layout_alignParentTop="true"
@@ -97,8 +95,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:id="@+id/toggleCamera4"
-            android:textOn="@string/camera4_name"
-            android:textOff="@string/camera4_name"
+            android:textOn="camera4_name"
+            android:textOff="camera4_name"
             android:checked="false"
             android:layout_marginTop="5dp"
             android:layout_alignParentTop="true"
@@ -147,8 +145,7 @@
             android:layout_alignParentBottom="true"
             android:layout_alignParentLeft="true"
             android:layout_marginLeft="3dp"
-            android:layout_marginBottom="5dp"
-            android:visibility="invisible" />
+            android:layout_marginBottom="5dp" />
 
         <TextView
             android:layout_width="wrap_content"

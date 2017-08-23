@@ -30,10 +30,8 @@ import java.util.Locale;
 import java.util.Properties;
 import java.util.TreeMap;
 
-import uniandes.disc.imagine.robotarm_app.teleop.interfaces.DirectManipulationInterface;
-import uniandes.disc.imagine.robotarm_app.teleop.interfaces.GamepadInterface;
-import uniandes.disc.imagine.robotarm_app.teleop.interfaces.LeapMotionInterface;
-import uniandes.disc.imagine.robotarm_app.teleop.interfaces.ScreenJoystickInterface;
+import uniandes.disc.imagine.robotarm_app.teleop.interfaces.ManipulationInterfaces;
+import uniandes.disc.imagine.robotarm_app.teleop.interfaces.NavigationInterfaces;
 
 public class MainActivity extends ActionBarActivity implements PopupMenu.OnMenuItemClickListener {
 
@@ -45,14 +43,14 @@ public class MainActivity extends ActionBarActivity implements PopupMenu.OnMenuI
     private EditText rosPort;
     private EditText hostIP;
     private TreeMap<String,String> hostNameIPs;
-    private ImageView interface_1;
-    private ImageView interface_2;
-    private ImageView interface_3;
-    private ImageView interface_4;
+    private ImageView navigationInterfaces;
+    private ImageView manipulationInterfaces;
     private MenuItem[] language;
     private PopupMenu deviceIps;
     private RadioGroup streamPref;
     private RadioGroup controlPref;
+    private RadioGroup navigationPref;
+    private RadioGroup manipulationPref;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,12 +65,13 @@ public class MainActivity extends ActionBarActivity implements PopupMenu.OnMenuI
         rosIP = (EditText) findViewById(R.id.editIP);
         rosPort = (EditText) findViewById(R.id.editPort);
         hostIP = (EditText) findViewById(R.id.hostNameIP);
-        interface_1 = (ImageView) findViewById(R.id.imageViewPreviewController);
-        interface_2 = (ImageView) findViewById(R.id.imageViewPreviewDragging);
-        interface_3 = (ImageView) findViewById(R.id.imageViewPreviewGamepad);
-        interface_4 = (ImageView) findViewById(R.id.imageViewPreviewLeapMotion);
+
+        navigationInterfaces = (ImageView) findViewById(R.id.imageViewNavigation);
+        manipulationInterfaces = (ImageView) findViewById(R.id.imageViewManipulation);
         streamPref = (RadioGroup) findViewById(R.id.streamPref);
         controlPref = (RadioGroup) findViewById(R.id.controlPref);
+        navigationPref = (RadioGroup) findViewById(R.id.navigationPref);
+        manipulationPref = (RadioGroup) findViewById(R.id.manipulationPref);
 
         PREFERENCES = new Properties();
 
@@ -119,39 +118,18 @@ public class MainActivity extends ActionBarActivity implements PopupMenu.OnMenuI
             }
         });
 
-        Button cameraButton = (Button) findViewById(R.id.cameraButton);
-        cameraButton.setOnClickListener(new View.OnClickListener() {
+        navigationInterfaces.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startCameraActivity();
+                startNavigationActivity();
+
             }
         });
 
-        interface_1.setOnClickListener(new View.OnClickListener() {
+        manipulationInterfaces.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startControllerActivity();
-            }
-        });
-
-        interface_2.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startDraggingActivity();
-            }
-        });
-
-        interface_3.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startGamepadActivity();
-            }
-        });
-
-        interface_4.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startLeapMotionActivity();
+                startManipulationActivity();
             }
         });
     }
@@ -214,37 +192,16 @@ public class MainActivity extends ActionBarActivity implements PopupMenu.OnMenuI
         }
     }
 
-    private void startCameraActivity(){
+    private void startNavigationActivity(){
         if (isMasterValid()){
-            Intent myIntent = new Intent(MainActivity.this, CameraActivity.class);
+            Intent myIntent = new Intent(MainActivity.this, NavigationInterfaces.class);
             MainActivity.this.startActivity(myIntent);
         }
     }
 
-    private void startControllerActivity(){
+    private void startManipulationActivity(){
         if (isMasterValid()){
-            Intent myIntent = new Intent(MainActivity.this, ScreenJoystickInterface.class);
-            MainActivity.this.startActivity(myIntent);
-        }
-    }
-
-    private void startDraggingActivity(){
-        if (isMasterValid()){
-            Intent myIntent = new Intent(MainActivity.this, DirectManipulationInterface.class);
-            MainActivity.this.startActivity(myIntent);
-        }
-    }
-
-    private void startGamepadActivity(){
-        if (isMasterValid()){
-            Intent myIntent = new Intent(MainActivity.this, GamepadInterface.class);
-            MainActivity.this.startActivity(myIntent);
-        }
-    }
-
-    private void startLeapMotionActivity(){
-        if (isMasterValid()){
-            Intent myIntent = new Intent(MainActivity.this, LeapMotionInterface.class);
+            Intent myIntent = new Intent(MainActivity.this, ManipulationInterfaces.class);
             MainActivity.this.startActivity(myIntent);
         }
     }
@@ -282,10 +239,6 @@ public class MainActivity extends ActionBarActivity implements PopupMenu.OnMenuI
         PREFERENCES.setProperty( getString(R.string.MASTER), rosIP.getText().toString());
         PREFERENCES.setProperty( getString(R.string.MASTER_URI), "http://" + rosIP.getText().toString() + ":" + rosPort.getText().toString() );
         PREFERENCES.setProperty(getString(R.string.STREAM_URL), "http://" + rosIP.getText().toString() + ":" + getString(R.string.mjpeg_port) + "/stream?type=ros_compressed&topic=/android/image_raw");
-        PREFERENCES.setProperty(getString(R.string.WORKSPACE_X_OFFSET), getString(R.string.workspace_xoffset));
-        PREFERENCES.setProperty(getString(R.string.WORKSPACE_WIDTH), getString(R.string.workspace_width));
-        PREFERENCES.setProperty(getString(R.string.WORKSPACE_Y_OFFSET), getString(R.string.workspace_yoffset));
-        PREFERENCES.setProperty(getString(R.string.WORKSPACE_HEIGHT), getString(R.string.workspace_height));
 
         if( streamPref.getCheckedRadioButtonId() == R.id.streamMjpeg )
             PREFERENCES.setProperty( getString(R.string.mjpeg), "" );
@@ -295,6 +248,19 @@ public class MainActivity extends ActionBarActivity implements PopupMenu.OnMenuI
             PREFERENCES.setProperty( getString(R.string.udp), "" );
         if( controlPref.getCheckedRadioButtonId() == R.id.controlTCP )
             PREFERENCES.setProperty( getString(R.string.tcp), "" );
+
+        if( navigationPref.getCheckedRadioButtonId() == R.id.navigation01 )
+            PREFERENCES.setProperty( getString(R.string.navigation01), "" );
+        if( navigationPref.getCheckedRadioButtonId() == R.id.navigation02 )
+            PREFERENCES.setProperty( getString(R.string.navigation02), "" );
+        if( navigationPref.getCheckedRadioButtonId() == R.id.navigation03 )
+            PREFERENCES.setProperty( getString(R.string.navigation03), "" );
+        if( manipulationPref.getCheckedRadioButtonId() == R.id.manipulation01 )
+            PREFERENCES.setProperty( getString(R.string.manipulation01), "" );
+        if( manipulationPref.getCheckedRadioButtonId() == R.id.manipulation02 )
+            PREFERENCES.setProperty( getString(R.string.manipulation02), "" );
+        if( manipulationPref.getCheckedRadioButtonId() == R.id.manipulation03 )
+            PREFERENCES.setProperty( getString(R.string.manipulation03), "" );
 
         return true;
     }
@@ -357,9 +323,7 @@ public class MainActivity extends ActionBarActivity implements PopupMenu.OnMenuI
                 Toast.makeText(getApplicationContext(), "Avg: " + numberFormat.format(avgTime) + "ms Min: " + numberFormat.format(minTime) + "ms Max: " + numberFormat.format(maxTime) + "ms", Toast.LENGTH_LONG).show();
             }
             exit = proc.exitValue();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
+        } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
 
