@@ -118,6 +118,38 @@ public class MainActivity extends ActionBarActivity implements PopupMenu.OnMenuI
             }
         });
 
+        navigationPref.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup radioGroup, int id) {
+                if (id == R.id.navigation01) {
+                    navigationInterfaces.setImageResource(R.drawable.interface_navigation_01);
+                }
+                if (id == R.id.navigation02) {
+                    navigationInterfaces.setImageResource(R.drawable.interface_navigation_02);
+                }
+                if (id == R.id.navigation03) {
+                    navigationInterfaces.setImageResource(R.drawable.interface_navigation_03);
+                }
+            }
+        });
+
+        manipulationPref.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup radioGroup, int id) {
+                if(id == R.id.manipulation01){
+                    manipulationInterfaces.setImageResource(R.drawable.interface_manipulation_01);
+                }
+                if(id == R.id.manipulation02){
+                    manipulationInterfaces.setImageResource(R.drawable.interface_manipulation_02);
+                }
+                if(id == R.id.manipulation03){
+                    manipulationInterfaces.setImageResource(R.drawable.interface_manipulation_03);
+                }
+            }
+        });
+
+
+
         navigationInterfaces.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

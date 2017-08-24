@@ -87,7 +87,13 @@
     <string name="text_togglebuttonOff">Press to START</string>
 
     <!-- MANIPULATION ACTIVITY TEXT -->
+    <string name="text_virtualjoystickMan01">Circle Navigation</string>
+    <string name="text_scrollerMan">Grasping</string>
+    <string name="text_virtualjoystickMan02">Roll/Closeness</string>
+
     <string name="text_togglebuttonOnOff1">Camera 1</string>
     <string name="text_togglebuttonOnOff2">Camera 2</string>
+    <string name="text_buttonPreset1">Top-Down</string>
+    <string name="text_buttonPreset2">Right-to-Left</string>
 
 </resources>

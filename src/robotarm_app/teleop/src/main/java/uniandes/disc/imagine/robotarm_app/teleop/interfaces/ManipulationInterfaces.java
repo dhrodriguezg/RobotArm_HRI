@@ -56,7 +56,9 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
     private ToggleButton toggleStart;
     private ToggleButton toggleCamera1;
     private ToggleButton toggleCamera2;
-    private Button resetCamera;
+
+    private Button buttonEndEffectorPose1;
+    private Button buttonEndEffectorPose2;
 
     private TextView virtualJoystickTitle01;
     private TextView virtualJoystickTitle02;
@@ -65,7 +67,7 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
     private AndroidNode androidNode;
     private Float32Topic endeffector_graspTopic;
     private TwistTopic endeffector_navTopic;
-    private TwistTopic head_targetTopic;
+    private Int32Topic endeffector_presetTopic;
     private Int32Topic camera_selectionTopic;
     private Int32Topic interface_numberTopic;
 
@@ -133,7 +135,9 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
         toggleStart = (ToggleButton) findViewById(R.id.toggleStart);
         toggleCamera1 = (ToggleButton) findViewById(R.id.toggleCamera1);
         toggleCamera2 = (ToggleButton) findViewById(R.id.toggleCamera2);
-        resetCamera = (Button) findViewById(R.id.resetCameraButton);
+
+        buttonEndEffectorPose1 = (Button) findViewById(R.id.buttonEndEffectorPose1);
+        buttonEndEffectorPose2 = (Button) findViewById(R.id.buttonEndEffectorPose2);
 
         virtualJoystickTitle01 = (TextView) findViewById(R.id.scrollerTextView01);
         virtualJoystickTitle02 = (TextView) findViewById(R.id.scrollerTextView02);
@@ -141,16 +145,20 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
 
 
         if (MAN_INTERFACE ==INTERFACE_01){
-
-            scroller.setVisibility(View.GONE);
-            scrollerTitle.setVisibility(View.GONE);
-
             nodeMainVirtualJoystick01.setHolonomic(true);
             nodeMainVirtualJoystick02.setHolonomic(true);
             nodeMainVirtualJoystick01.setVisibility(View.VISIBLE);
             nodeMainVirtualJoystick02.setVisibility(View.VISIBLE);
             virtualJoystickTitle01.setVisibility(View.VISIBLE);
             virtualJoystickTitle02.setVisibility(View.VISIBLE);
+            scrollerTitle.setVisibility(View.VISIBLE);
+            scroller.setVisibility(View.VISIBLE);
+            scroller.setTopValue(0.f);
+            scroller.setBottomValue(0.1f);
+            scroller.setFontSize(13);
+            scroller.setMaxTotalItems(3);
+            scroller.setMaxVisibleItems(3);
+            scroller.beginAtTop();
         }
         if (MAN_INTERFACE ==INTERFACE_02){
 
@@ -189,26 +197,20 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
             scrollerTitle.setVisibility(View.VISIBLE);
         }
 
-        resetCamera.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                headRotZ = 0.f;
-                headRotY = 0.f;
-            }
-        });
-
         endeffector_navTopic =  new TwistTopic();
         endeffector_navTopic.publishTo(getString(R.string.topic_r_arm_nav), false, 10);
         endeffector_navTopic.setPublishingFreq(10);
-
-        head_targetTopic =  new TwistTopic();
-        head_targetTopic.publishTo(getString(R.string.topic_head_target), false, 10);
-        head_targetTopic.setPublishingFreq(10);
 
         endeffector_graspTopic = new Float32Topic();
         endeffector_graspTopic.publishTo(getString(R.string.topic_r_arm_grasp), false, 10);
         endeffector_graspTopic.setPublishingFreq(10);
         endeffector_graspTopic.setPublisher_float(0.0f);
+
+        endeffector_presetTopic = new Int32Topic();
+        endeffector_presetTopic.publishTo(getString(R.string.topic_gripper_pose_preset), false, 10);
+        endeffector_presetTopic.setPublishingFreq(10);
+        endeffector_presetTopic.setPublisher_int(0);
+        endeffector_presetTopic.publishNow();
 
         camera_selectionTopic = new Int32Topic();
         camera_selectionTopic.publishTo(getString(R.string.topic_camera_number), true, 10);
@@ -222,10 +224,10 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
         interface_numberTopic.setPublisher_int(MAN_INTERFACE);
         interface_numberTopic.publishNow();
 
-        androidNode.addTopics(camera_selectionTopic, interface_numberTopic);
+        androidNode.addTopics(camera_selectionTopic, interface_numberTopic, endeffector_presetTopic);
 
         if ( MainActivity.PREFERENCES.containsKey((getString(R.string.tcp))) )
-            androidNode.addTopics(endeffector_navTopic, head_targetTopic, endeffector_graspTopic);
+            androidNode.addTopics(endeffector_navTopic, endeffector_graspTopic);
         else if ( MainActivity.PREFERENCES.containsKey((getString(R.string.udp))) )
             udpCommCommand = new UDPComm( MainActivity.PREFERENCES.getProperty( getString(R.string.MASTER) ) , Integer.parseInt(getString(R.string.udp_port)));
 
@@ -240,8 +242,11 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
             @Override
             public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
                 if (isChecked) {
+                    toggleCamera2.setChecked(false);
                     camera_selectionTopic.setPublisher_int(1);
                     camera_selectionTopic.publishNow();
+                }else if( !toggleCamera2.isChecked() ){
+                    toggleCamera1.setChecked(true);
                 }
             }
         });
@@ -250,9 +255,27 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
             @Override
             public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
                 if (isChecked) {
+                    toggleCamera1.setChecked(false);
                     camera_selectionTopic.setPublisher_int(2);
                     camera_selectionTopic.publishNow();
+                }else if( !toggleCamera1.isChecked() ){
+                    toggleCamera2.setChecked(true);
                 }
+            }
+        });
+
+        buttonEndEffectorPose1.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                endeffector_presetTopic.setPublisher_int(3);
+                endeffector_presetTopic.publishNow();
+            }
+        });
+        buttonEndEffectorPose2.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                endeffector_presetTopic.setPublisher_int(1);
+                endeffector_presetTopic.publishNow();
             }
         });
 
@@ -321,13 +344,6 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
         float endeffector_axisRZ = 0.f;
         float endeffector_grasp = 0.f;
 
-        float head_axisX = 0.f;
-        float head_axisY = 0.f;
-        float head_axisZ = 0.f;
-        float head_axisRX = 0.f;
-        float head_axisRY = 0.f;
-        float head_axisRZ = 0.f;
-
         if ( MainActivity.PREFERENCES.containsKey((getString(R.string.udp))) ){
             //Do something with UDPcommand...
             return;
@@ -336,38 +352,27 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
         final float dT = datarate*MS2S;
 
         if(MAN_INTERFACE == INTERFACE_01){
-
-            endeffector_axisX =  nodeMainVirtualJoystick01.getAxisX();
-            endeffector_axisRZ = nodeMainVirtualJoystick01.getAxisY();
-
-            headRotY -= (nodeMainVirtualJoystick02.getAxisX()*dT*MAXRADSPS);
-            headRotZ += (nodeMainVirtualJoystick02.getAxisY()*dT*MAXRADSPS);
-            head_axisRY= headRotY;
-            head_axisRZ= headRotZ;
-
-        }
-        if(MAN_INTERFACE == INTERFACE_02){//TODO
-            if(!standardGestureDetector.isDetectingGesture())
-                return;
-
-            endeffector_axisX=-standardGestureDetector.getTargetY()/2.f;
-            endeffector_axisY=-standardGestureDetector.getTargetX()/2.f;
-            endeffector_axisZ=-standardGestureDetector.getThridDimension()/2.f;
-            // Yaw=Z, Pitch=Y, Roll=X
-            endeffector_axisRX = 0.f;
-            endeffector_axisRY = -standardGestureDetector.getRotation()/180.f;
-            endeffector_axisRZ = 0.f;
-
-        }
-        if(MAN_INTERFACE == INTERFACE_03){
             runOnUiThread(new Runnable() {
                 public void run() {
                     scroller.updateView();
                 }
             });
-            endeffector_axisX=scroller.getValue();
-            head_axisRY= headRotY;
-            head_axisRZ= headRotZ;
+            endeffector_axisX = -nodeMainVirtualJoystick01.getAxisY()/4.f;
+            endeffector_axisY = nodeMainVirtualJoystick01.getAxisX()/4.f;
+            endeffector_axisZ = -nodeMainVirtualJoystick02.getAxisX()/4.f;
+            endeffector_axisRY= nodeMainVirtualJoystick02.getAxisY();
+            endeffector_grasp = scroller.getValue();
+        }
+        if(MAN_INTERFACE == INTERFACE_02){
+            endeffector_axisX = standardGestureDetector.getTwoFingerDragX()/2.f;
+            endeffector_axisY = -standardGestureDetector.getTwoFingerDragY()/2.f;
+            endeffector_axisZ = standardGestureDetector.getThreeFingerDragY()/2.f;
+            endeffector_axisRY = -standardGestureDetector.getTwoFingerRotation()/180.f;
+            endeffector_grasp = (1.f-standardGestureDetector.getTwoFingerPinch())/10.f;
+
+        }
+        if(MAN_INTERFACE == INTERFACE_03){
+            //...
         }
 
         if(Math.abs(endeffector_axisX) < 0.01f)
@@ -382,9 +387,6 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
         endeffector_navTopic.publishNow();
         endeffector_graspTopic.setPublisher_float(endeffector_grasp);
         endeffector_graspTopic.publishNow();
-        head_targetTopic.setPublisher_linear(new float[]{head_axisX, head_axisY, head_axisZ});
-        head_targetTopic.setPublisher_angular(new float[]{head_axisRX, head_axisRY, head_axisRZ});
-        head_targetTopic.publishNow();
 
     }
 

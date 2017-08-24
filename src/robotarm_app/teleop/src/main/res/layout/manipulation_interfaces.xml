@@ -35,33 +35,6 @@
             android:layout_centerHorizontal="true"
             android:visibility="invisible" />
 
-        <uniandes.disc.imagine.robotarm_app.teleop.widget.ScrollerView
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            app:layout_heightPercent="33%"
-            app:layout_widthPercent="10%"
-            android:id="@+id/scrollerView"
-            android:alpha="0.6"
-            android:layout_alignParentBottom="true"
-            android:layout_alignParentRight="true"
-            android:layout_marginRight="15dp"
-            android:layout_marginBottom="10dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="20dp"
-            android:textAppearance="?android:attr/textAppearanceSmall"
-            android:text="@string/text_scroller"
-            android:id="@+id/scrollTextView"
-            android:gravity="center_vertical|center_horizontal"
-            android:textColor="#ff797979"
-            android:alpha="0.8"
-            android:layout_above="@+id/scrollerView"
-            android:layout_alignLeft="@+id/scrollerView"
-            android:layout_alignRight="@+id/scrollerView" />
-
-
-
 
         <uniandes.disc.imagine.robotarm_app.teleop.widget.CustomVirtualJoystickView
             android:id="@+id/virtual_joystick_01"
@@ -79,7 +52,7 @@
             android:layout_width="wrap_content"
             android:layout_height="30dp"
             android:textAppearance="?android:attr/textAppearanceSmall"
-            android:text="@string/text_virtualjoystick01"
+            android:text="@string/text_virtualjoystickMan01"
             android:id="@+id/scrollerTextView01"
             android:gravity="center_vertical|center_horizontal"
             android:textColor="#ff797979"
@@ -106,7 +79,7 @@
             android:layout_width="wrap_content"
             android:layout_height="30dp"
             android:textAppearance="?android:attr/textAppearanceSmall"
-            android:text="@string/text_virtualjoystick02"
+            android:text="@string/text_virtualjoystickMan02"
             android:id="@+id/scrollerTextView02"
             android:gravity="center_vertical|center_horizontal"
             android:textColor="#ff797979"
@@ -116,16 +89,30 @@
             android:layout_alignParentRight="true"
             android:layout_marginRight="5dp" />
 
-        <ToggleButton
+        <uniandes.disc.imagine.robotarm_app.teleop.widget.ScrollerView
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            app:layout_heightPercent="33%"
+            app:layout_widthPercent="10%"
+            android:id="@+id/scrollerView"
+            android:alpha="0.6"
+            android:layout_above="@+id/scrollerTextView02"
+            android:layout_alignParentRight="true"
+            android:layout_marginRight="15dp"
+            android:layout_marginBottom="0dp" />
+
+        <TextView
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textOn="@string/text_togglebuttonOnOff1"
-            android:textOff="@string/text_togglebuttonOnOff1"
-            android:id="@+id/toggleCamera1"
-            android:layout_alignParentTop="true"
-            android:layout_toLeftOf="@+id/targetView"
-            android:layout_marginTop="10dp"
-            android:checked="true" />
+            android:layout_height="20dp"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:text="@string/text_scrollerMan"
+            android:id="@+id/scrollTextView"
+            android:gravity="center_vertical|center_horizontal"
+            android:textColor="#ff797979"
+            android:alpha="0.8"
+            android:layout_above="@+id/scrollerView"
+            android:layout_alignLeft="@+id/scrollerView"
+            android:layout_alignRight="@+id/scrollerView" />
 
         <ToggleButton
             android:layout_width="wrap_content"
@@ -134,8 +121,39 @@
             android:textOff="@string/text_togglebuttonOnOff2"
             android:id="@+id/toggleCamera2"
             android:layout_alignParentTop="true"
-            android:layout_toRightOf="@+id/targetView"
+            android:layout_toLeftOf="@+id/targetView"
             android:layout_marginTop="10dp"/>
+
+        <ToggleButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textOn="@string/text_togglebuttonOnOff1"
+            android:textOff="@string/text_togglebuttonOnOff1"
+            android:id="@+id/toggleCamera1"
+            android:layout_alignParentTop="true"
+            android:layout_toLeftOf="@+id/toggleCamera2"
+            android:layout_marginTop="10dp"
+            android:layout_marginRight="10dp"
+            android:checked="true" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/text_buttonPreset1"
+            android:id="@+id/buttonEndEffectorPose1"
+            android:layout_alignParentTop="true"
+            android:layout_toRightOf="@+id/targetView"
+            android:layout_marginTop="10dp" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/text_buttonPreset2"
+            android:id="@+id/buttonEndEffectorPose2"
+            android:layout_alignParentTop="true"
+            android:layout_toRightOf="@+id/buttonEndEffectorPose1"
+            android:layout_marginLeft="10dp"
+            android:layout_marginTop="10dp" />
 
         <ToggleButton
             android:layout_width="wrap_content"
@@ -149,6 +167,8 @@
             android:layout_marginBottom="5dp" />
 
     </android.support.percent.PercentRelativeLayout>
+
+
 
 
 </RelativeLayout>

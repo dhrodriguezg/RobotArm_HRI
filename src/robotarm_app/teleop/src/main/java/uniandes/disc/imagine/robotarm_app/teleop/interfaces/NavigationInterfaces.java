@@ -44,7 +44,7 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
     private static final String NODE_NAME="/android_"+TAG.toLowerCase();
 
     private NodeMainExecutorService nodeMain;
-    private StandardGestureDetector standardGestureDetector = null;
+    private StandardGestureDetector navigationGesturesDetector = null;
 
     private RosImageView<CompressedImage> nodeMainImageStream;
     private CustomVirtualJoystickView nodeMainVirtualJoystick01=null;
@@ -158,9 +158,9 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
             scrollerTitle.setVisibility(View.GONE);
 
             if ( MainActivity.PREFERENCES.containsKey((getString(R.string.ros_cimage))) ) {
-                standardGestureDetector = new StandardGestureDetector(this, nodeMainImageStream);
+                navigationGesturesDetector = new StandardGestureDetector(this, nodeMainImageStream);
             }else if( MainActivity.PREFERENCES.containsKey((getString(R.string.mjpeg))) ){
-                standardGestureDetector = new StandardGestureDetector(this, mjpegView);
+                navigationGesturesDetector = new StandardGestureDetector(this, mjpegView);
             }
 
         }
@@ -312,17 +312,23 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
 
             headRotY -= (nodeMainVirtualJoystick02.getAxisX()*dT*MAXRADSPS);
             headRotZ += (nodeMainVirtualJoystick02.getAxisY()*dT*MAXRADSPS);
-            head_axisRY= headRotY;
-            head_axisRZ= headRotZ;
+            head_axisRY = headRotY;
+            head_axisRZ = headRotZ;
 
         }
-        if(NAV_INTERFACE == INTERFACE_02){//TODO
-            if(!standardGestureDetector.isDetectingGesture())
-                return;
-            float axisX = standardGestureDetector.getTargetX();
-            float axisY = standardGestureDetector.getTargetY();
-            float axisZ = standardGestureDetector.getThridDimension();
-            float axisRZ = standardGestureDetector.getRotation()/180.f;
+        if(NAV_INTERFACE == INTERFACE_02){
+
+            robot_axisX = -navigationGesturesDetector.getOneFingerDragY();
+            robot_axisRZ = -navigationGesturesDetector.getOneFingerDragX();
+
+            if(robot_axisX<0)
+                robot_axisRZ=-robot_axisRZ;
+
+            headRotY -= (navigationGesturesDetector.getThreeFingerDragY()*dT*MAXRADSPS);
+            headRotZ += (navigationGesturesDetector.getThreeFingerDragX()*dT*MAXRADSPS);
+            head_axisRY = headRotY;
+            head_axisRZ = headRotZ;
+            //navigationGesturesDetector.getTwoFingerRotation()/180.f;
         }
         if(NAV_INTERFACE == INTERFACE_03){
             runOnUiThread(new Runnable() {

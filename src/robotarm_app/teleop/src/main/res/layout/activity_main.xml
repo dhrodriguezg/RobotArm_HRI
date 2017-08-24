@@ -250,7 +250,7 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:gravity="center"
-            android:src="@drawable/interface_screenjoystick"
+            android:src="@drawable/interface_navigation_01"
             grid:layout_columnWeight="1"
             grid:layout_rowWeight="1"
             grid:layout_gravity="fill_horizontal"
@@ -284,7 +284,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/interface_manipulation_03"
-                android:id="@+id/manipulation03" />
+                android:id="@+id/manipulation03"
+                android:checked="false"
+                android:enabled="false" />
 
         </RadioGroup>
 
@@ -292,7 +294,7 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:gravity="center"
-            android:src="@drawable/interface_screenjoystick"
+            android:src="@drawable/interface_manipulation_01"
             grid:layout_columnWeight="1"
             grid:layout_rowWeight="1"
             grid:layout_gravity="fill_horizontal"
