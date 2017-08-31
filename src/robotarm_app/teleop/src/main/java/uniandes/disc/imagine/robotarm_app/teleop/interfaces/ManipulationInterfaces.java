@@ -357,9 +357,9 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
                     scroller.updateView();
                 }
             });
-            endeffector_axisX = -nodeMainVirtualJoystick01.getAxisY()/4.f;
-            endeffector_axisY = nodeMainVirtualJoystick01.getAxisX()/4.f;
-            endeffector_axisZ = -nodeMainVirtualJoystick02.getAxisX()/4.f;
+            endeffector_axisX = nodeMainVirtualJoystick01.getAxisX()/4.f;
+            endeffector_axisY = nodeMainVirtualJoystick01.getAxisY()/4.f;
+            endeffector_axisZ = nodeMainVirtualJoystick02.getAxisX()/4.f;
             endeffector_axisRY= nodeMainVirtualJoystick02.getAxisY();
             endeffector_grasp = scroller.getValue();
         }

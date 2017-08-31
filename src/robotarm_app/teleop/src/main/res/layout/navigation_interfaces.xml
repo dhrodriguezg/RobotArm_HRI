@@ -132,7 +132,51 @@
             android:layout_centerHorizontal="true"
             android:layout_marginTop="5dp" />
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:text=""
+            android:id="@+id/textViewMessage"
+            android:layout_below="@+id/resetCameraButton"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="5dp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:layout_widthPercent="15%"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:text="@string/empty_X3"
+            android:id="@+id/speedControl1"
+            android:background="#ffff0000"
+            android:alpha="0.6"
+            android:visibility="invisible"
+            android:layout_marginRight="10dp"
+            android:layout_alignTop="@+id/resetCameraButton"
+            android:layout_alignBottom="@+id/resetCameraButton"
+            android:layout_toLeftOf="@+id/resetCameraButton"
+            android:gravity="center_vertical|center_horizontal" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:layout_widthPercent="15%"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:text="@string/empty_X3"
+            android:id="@+id/speedControl2"
+            android:background="#ffff0000"
+            android:alpha="0.6"
+            android:visibility="invisible"
+            android:layout_marginLeft="10dp"
+            android:layout_alignTop="@+id/resetCameraButton"
+            android:layout_alignBottom="@+id/resetCameraButton"
+            android:layout_toRightOf="@+id/resetCameraButton"
+            android:gravity="center_vertical|center_horizontal" />
+
     </android.support.percent.PercentRelativeLayout>
+
+
 
 
 </RelativeLayout>

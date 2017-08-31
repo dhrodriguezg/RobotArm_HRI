@@ -31,6 +31,7 @@
     <string name="HOSTNAME">ROS_HOSTNAME</string>
     <string name="STREAM_URL">ROS_STREAM_URL</string>
     <string name="topic_head_target">"/android/head_target"</string>
+    <string name="topic_user_measures">"/android/user_measures"</string>
     <string name="topic_gripper_pose_preset">"/android/gripper_pose/preset"</string>
     <string name="topic_robot_nav">/android/robot_navegation</string>
     <string name="topic_r_arm_grasp">/android/r_arm_grasp</string>
@@ -40,6 +41,8 @@
     <string name="topic_streaming">"/android/image_raw/compressed"</string>
     <string name="topic_streaming_msg">sensor_msgs/CompressedImage</string>
     <string name="topic_emergencystop">/android/emergency_stop</string>
+
+    <string name="topic_target_distance">/android/robot_base/target_distance</string>
 
     <string name="service_test">/android/test_service</string>
 
@@ -59,6 +62,7 @@
     <string name="default_hostname_ip">0.0.0.0</string>
     <string name="change_hostname_ip">Change</string>
     <string name="default_comm">ppp0</string>
+    <string name="public_ip_name">nat</string>
     <string name="options">Options</string>
     <string name="stream">Stream:</string>
     <string name="mjpeg">Mjpeg</string>
@@ -70,13 +74,21 @@
     <string name="udp_port">58528</string>
     <string name="task">Task</string>
     <string name="interfac">Interface</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="is_record">Record data?</string>
+    <string name="record">save_data</string>
+    <string name="user_number">User\'s #</string>
+    <string name="user">user</string>
     <string name="interfaces">Interfaces</string>
-    <string name="interface_navigation_01">On-Screen Joys</string>
-    <string name="interface_navigation_02">Gestures</string>
-    <string name="interface_navigation_03">Free</string>
-    <string name="interface_manipulation_01">On-Screen Joys</string>
-    <string name="interface_manipulation_02">Gestures</string>
-    <string name="interface_manipulation_03">Free</string>
+    <string name="interfaces_navigation">Navigation:</string>
+    <string name="interfaces_manipulation">Manipulation:</string>
+    <string name="interface_navigation_01">a. On-Screen Joys</string>
+    <string name="interface_navigation_02">b. Gestures</string>
+    <string name="interface_navigation_03">c. Tilt</string>
+    <string name="interface_manipulation_01">a. On-Screen Joys</string>
+    <string name="interface_manipulation_02">b. Gestures</string>
+    <string name="interface_manipulation_03">c. Tilt</string>
 
     <!-- NAVIGATION ACTIVITY TEXT -->
     <string name="text_virtualjoystick01">Navigation</string>

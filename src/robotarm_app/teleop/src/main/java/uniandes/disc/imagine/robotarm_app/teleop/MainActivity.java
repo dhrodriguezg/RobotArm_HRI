@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -14,21 +15,35 @@ import android.widget.PopupMenu;
 import android.widget.RadioGroup;
 import android.widget.Toast;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.util.EntityUtils;
 import org.ros.address.InetAddressFactory;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.MalformedURLException;
 import java.net.NetworkInterface;
+import java.net.ProtocolException;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.URL;
 import java.text.DecimalFormat;
 import java.util.Enumeration;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.TreeMap;
+
+import javax.net.ssl.HttpsURLConnection;
 
 import uniandes.disc.imagine.robotarm_app.teleop.interfaces.ManipulationInterfaces;
 import uniandes.disc.imagine.robotarm_app.teleop.interfaces.NavigationInterfaces;
@@ -42,20 +57,25 @@ public class MainActivity extends ActionBarActivity implements PopupMenu.OnMenuI
     private EditText rosIP;
     private EditText rosPort;
     private EditText hostIP;
+    private EditText userN;
     private TreeMap<String,String> hostNameIPs;
     private ImageView navigationInterfaces;
     private ImageView manipulationInterfaces;
     private MenuItem[] language;
     private PopupMenu deviceIps;
+    private RadioGroup recordPref;
     private RadioGroup streamPref;
     private RadioGroup controlPref;
     private RadioGroup navigationPref;
     private RadioGroup manipulationPref;
+    private String publicIP;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        findAllDeviceIPs();
         super.onCreate(savedInstanceState);
+        publicIP = null;
+        updatePublicIP(true);
+        findAllDeviceIPs();
         loadGUI();
     }
 
@@ -65,9 +85,11 @@ public class MainActivity extends ActionBarActivity implements PopupMenu.OnMenuI
         rosIP = (EditText) findViewById(R.id.editIP);
         rosPort = (EditText) findViewById(R.id.editPort);
         hostIP = (EditText) findViewById(R.id.hostNameIP);
+        userN = (EditText) findViewById(R.id.editUserNumber);
 
         navigationInterfaces = (ImageView) findViewById(R.id.imageViewNavigation);
         manipulationInterfaces = (ImageView) findViewById(R.id.imageViewManipulation);
+        recordPref = (RadioGroup) findViewById(R.id.recordData);
         streamPref = (RadioGroup) findViewById(R.id.streamPref);
         controlPref = (RadioGroup) findViewById(R.id.controlPref);
         navigationPref = (RadioGroup) findViewById(R.id.navigationPref);
@@ -77,6 +99,8 @@ public class MainActivity extends ActionBarActivity implements PopupMenu.OnMenuI
 
         if(hostNameIPs.containsKey( getString(R.string.default_comm) ))
             hostIP.setText(hostNameIPs.get( getString(R.string.default_comm) ));
+        else if (publicIP!=null)
+            hostIP.setText(publicIP);
         else
             hostIP.setText(InetAddressFactory.newNonLoopback().getHostAddress());
         deviceIps = new PopupMenu( this, hostIP);
@@ -108,6 +132,7 @@ public class MainActivity extends ActionBarActivity implements PopupMenu.OnMenuI
             @Override
             public void onClick(View v) {
                 deviceIps.getMenu().clear();
+                updatePublicIP(false);
                 findAllDeviceIPs();
                 int id=0;
                 for (String interfaces : hostNameIPs.keySet()){
@@ -145,6 +170,13 @@ public class MainActivity extends ActionBarActivity implements PopupMenu.OnMenuI
                 if(id == R.id.manipulation03){
                     manipulationInterfaces.setImageResource(R.drawable.interface_manipulation_03);
                 }
+            }
+        });
+
+        recordPref.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup radioGroup, int id) {
+                userN.setEnabled(id == R.id.recordYes);
             }
         });
 
@@ -253,9 +285,44 @@ public class MainActivity extends ActionBarActivity implements PopupMenu.OnMenuI
                     }
                 }
             }
+            if(publicIP!=null)
+                hostNameIPs.put(getString(R.string.public_ip_name), publicIP);
         } catch (SocketException e) {
             e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+    }
+
+    private void updatePublicIP(final boolean overrideHostIP){
+
+        Thread thread = new Thread(){
+            public void run(){
+                try{
+                    URL url = new URL("https://ifcfg.me/ip");
+                    HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+                    conn.setConnectTimeout(5000);
+                    conn.setRequestMethod("POST");
+                    conn.getResponseCode();
+                    InputStream in = new BufferedInputStream(conn.getInputStream());
+                    publicIP = org.apache.commons.io.IOUtils.toString(in, "UTF-8").trim();
+                    if(overrideHostIP && hostIP != null){
+                        runOnUiThread(new Runnable() {
+                            public void run() {
+                                hostIP.setText(publicIP);
+                            }
+                        });
+                    }
+                } catch (MalformedURLException e) {
+                    e.printStackTrace();
+                } catch (ProtocolException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        thread.start();
     }
 
     private boolean isMasterValid(){
@@ -271,6 +338,11 @@ public class MainActivity extends ActionBarActivity implements PopupMenu.OnMenuI
         PREFERENCES.setProperty( getString(R.string.MASTER), rosIP.getText().toString());
         PREFERENCES.setProperty( getString(R.string.MASTER_URI), "http://" + rosIP.getText().toString() + ":" + rosPort.getText().toString() );
         PREFERENCES.setProperty(getString(R.string.STREAM_URL), "http://" + rosIP.getText().toString() + ":" + getString(R.string.mjpeg_port) + "/stream?type=ros_compressed&topic=/android/image_raw");
+
+        if (recordPref.getCheckedRadioButtonId() == R.id.recordYes ) {
+            PREFERENCES.setProperty(getString(R.string.record), "");
+            PREFERENCES.setProperty(getString(R.string.user), userN.getText().toString() );
+        }
 
         if( streamPref.getCheckedRadioButtonId() == R.id.streamMjpeg )
             PREFERENCES.setProperty( getString(R.string.mjpeg), "" );

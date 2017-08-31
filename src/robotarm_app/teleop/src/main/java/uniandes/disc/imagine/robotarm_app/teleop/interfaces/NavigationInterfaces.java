@@ -1,6 +1,8 @@
 package uniandes.disc.imagine.robotarm_app.teleop.interfaces;
 
+import android.app.AlertDialog;
 import android.content.Context;
+import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -22,11 +24,14 @@ import org.ros.android.view.RosImageView;
 import org.ros.node.NodeConfiguration;
 import org.ros.node.NodeMainExecutor;
 
+import java.math.RoundingMode;
 import java.net.URI;
+import java.text.DecimalFormat;
 
 import sensor_msgs.CompressedImage;
 import uniandes.disc.imagine.robotarm_app.teleop.MainActivity;
 import uniandes.disc.imagine.robotarm_app.teleop.R;
+import uniandes.disc.imagine.robotarm_app.teleop.topic.Float32Topic;
 import uniandes.disc.imagine.robotarm_app.teleop.topic.Int32Topic;
 import uniandes.disc.imagine.robotarm_app.teleop.topic.TwistTopic;
 import uniandes.disc.imagine.robotarm_app.teleop.touchscreen.StandardGestureDetector;
@@ -57,24 +62,35 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
 
     private TextView virtualJoystickTitle01;
     private TextView virtualJoystickTitle02;
+    private TextView speedControl01;
+    private TextView speedControl02;
     private TextView scrollerTitle;
+    private TextView messageView;
 
     private AndroidNode androidNode;
     private TwistTopic robot_navTopic;
     private TwistTopic head_targetTopic;
+    private TwistTopic user_measuresTopic;
     private Int32Topic camera_selectionTopic;
     private Int32Topic interface_numberTopic;
+    private Float32Topic target_distanceTopic;
 
     private UDPComm udpCommCommand;
     private MjpegView mjpegView;
     private boolean isRunning = true;
+    private boolean isShowingMsg = false;
+    private boolean isRecording = false;
+    private long timeMeasurement;
+    private String userNumber;
 
     private static final float NS2S = 1.0f / 1000000000.0f;
     private static final float MS2S = 1.0f / 1000.0f;
     private static final float MAXRADSPS = 20.f / 57.3f ; //10 degrees per second
-    private float headRotZ, headRotY;
+    private float headRotZ, headRotY, lastHeadRotZ, lastHeadRotY;
     private float nanotimestamp;
     private int datarate = 20;
+    private float speedControlRate = 0.1f;
+    private int speedControlCounter = 0;
 
     private SensorManager sensorManager;
     private Sensor gyroscope;
@@ -107,6 +123,9 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
         if (MainActivity.PREFERENCES.containsKey((getString(R.string.navigation03))))
             NAV_INTERFACE=INTERFACE_03;
 
+        isRecording=MainActivity.PREFERENCES.containsKey((getString(R.string.record)));
+        userNumber=MainActivity.PREFERENCES.getProperty(getString(R.string.user));
+
         //Intent intent = getIntent();
         setContentView(R.layout.navigation_interfaces);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -126,6 +145,8 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
 
         nodeMainVirtualJoystick01 = (CustomVirtualJoystickView) findViewById(R.id.virtual_joystick_01);
         nodeMainVirtualJoystick02 = (CustomVirtualJoystickView) findViewById(R.id.virtual_joystick_02);
+        speedControl01 = (TextView) findViewById(R.id.speedControl1);
+        speedControl02 = (TextView) findViewById(R.id.speedControl2);
         scroller = (ScrollerView) findViewById(R.id.scrollerView);
 
         toggleStart = (ToggleButton) findViewById(R.id.toggleStart);
@@ -134,11 +155,14 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
         virtualJoystickTitle01 = (TextView) findViewById(R.id.scrollerTextView01);
         virtualJoystickTitle02 = (TextView) findViewById(R.id.scrollerTextView02);
         scrollerTitle = (TextView) findViewById(R.id.scrollTextView);
+        messageView = (TextView) findViewById(R.id.textViewMessage);
 
 
         if (NAV_INTERFACE==INTERFACE_01){
 
             scroller.setVisibility(View.GONE);
+            speedControl01.setVisibility(View.GONE);
+            speedControl02.setVisibility(View.GONE);
             scrollerTitle.setVisibility(View.GONE);
 
             nodeMainVirtualJoystick01.setHolonomic(true);
@@ -154,6 +178,8 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
             nodeMainVirtualJoystick02.setVisibility(View.GONE);
             virtualJoystickTitle01.setVisibility(View.GONE);
             virtualJoystickTitle02.setVisibility(View.GONE);
+            speedControl01.setVisibility(View.GONE);
+            speedControl02.setVisibility(View.GONE);
             scroller.setVisibility(View.GONE);
             scrollerTitle.setVisibility(View.GONE);
 
@@ -183,6 +209,8 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
             scroller.resetOnRelease();
             scroller.setVisibility(View.VISIBLE);
             scrollerTitle.setVisibility(View.VISIBLE);
+            speedControl01.setVisibility(View.VISIBLE);
+            speedControl02.setVisibility(View.VISIBLE);
         }
 
         resetCamera.setOnClickListener(new View.OnClickListener() {
@@ -193,9 +221,21 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
             }
         });
 
-        robot_navTopic =  new TwistTopic();
+        toggleStart.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                toggleStart.setVisibility(View.INVISIBLE);
+                timeMeasurement=System.currentTimeMillis();
+            }
+        });
+
+        robot_navTopic = new TwistTopic();
         robot_navTopic.publishTo(getString(R.string.topic_robot_nav), false, 10);
         robot_navTopic.setPublishingFreq(10);
+
+        user_measuresTopic = new TwistTopic();
+        user_measuresTopic.publishTo(getString(R.string.topic_user_measures), false, 10);
+        user_measuresTopic.setPublishingFreq(10);
 
         head_targetTopic =  new TwistTopic();
         head_targetTopic.publishTo(getString(R.string.topic_head_target), false, 10);
@@ -213,10 +253,15 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
         interface_numberTopic.setPublisher_int(NAV_INTERFACE);
         interface_numberTopic.publishNow();
 
+        target_distanceTopic = new Float32Topic();
+        target_distanceTopic.subscribeTo(getString(R.string.topic_target_distance));
+        target_distanceTopic.setSubcriber_float(Float.MAX_VALUE);
+
+
         androidNode.addTopics(camera_selectionTopic, interface_numberTopic);
 
         if ( MainActivity.PREFERENCES.containsKey((getString(R.string.tcp))) )
-            androidNode.addTopics(robot_navTopic, head_targetTopic);
+            androidNode.addTopics(robot_navTopic, head_targetTopic, target_distanceTopic, user_measuresTopic);
         else if ( MainActivity.PREFERENCES.containsKey((getString(R.string.udp))) )
             udpCommCommand = new UDPComm( MainActivity.PREFERENCES.getProperty( getString(R.string.MASTER) ) , Integer.parseInt(getString(R.string.udp_port)));
 
@@ -225,6 +270,21 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
             androidNode.addNodeMain(nodeMainImageStream);
         }else if( MainActivity.PREFERENCES.containsKey((getString(R.string.mjpeg))) ){
             nodeMainImageStream.setVisibility(View.GONE);
+        }
+
+        if(isRecording){
+            try{
+                Integer.parseInt(userNumber);
+            }catch (Exception e){
+                final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setMessage("Go back and write User's #").setTitle("User's Number not well defined");
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        AlertDialog dialog = builder.create();
+                        dialog.show();
+                    }
+                });
+            }
         }
 
         Thread threadGestures = new Thread(){
@@ -284,6 +344,7 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
         if(!toggleStart.isChecked())
             return;
 
+        final float dT = datarate*MS2S;
         float robot_axisX = 0.f;
         float robot_axisY = 0.f;
         float robot_axisZ = 0.f;
@@ -303,7 +364,65 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
             return;
         }
 
-        final float dT = datarate*MS2S;
+        runOnUiThread(new Runnable() {
+            public void run() {
+                DecimalFormat df = new DecimalFormat("#.##");
+                df.setRoundingMode(RoundingMode.FLOOR);
+                messageView.setText("Goal at: " + df.format(target_distanceTopic.getSubcriber_float())+ "m");
+                speedControlCounter++;
+                if(speedControlCounter > speedControlRate*1000.f/datarate){
+                    speedControlCounter=0;
+                    float dRotY=Math.abs(headRotY-lastHeadRotY)/dT;
+                    float dRotZ=Math.abs(headRotZ-lastHeadRotZ)/dT;
+                    float dRot= dRotY > dRotZ ? dRotY : dRotZ;
+                    float range01=2.5f;
+                    float range02=4.f;
+
+                    if(dRot < range01){
+                        speedControl01.setText("OK!");
+                        speedControl02.setText("OK!");
+                        speedControl01.setBackgroundColor(Color.GREEN);
+                        speedControl02.setBackgroundColor(Color.GREEN);
+                    }else if(dRot > range01 && dRot < range02){
+                        speedControl01.setText("..Warning..");
+                        speedControl02.setText("..Warning..");
+                        speedControl01.setBackgroundColor(Color.YELLOW);
+                        speedControl02.setBackgroundColor(Color.YELLOW);
+                    }else{
+                        speedControl01.setText("SLOWDOWN!!!");
+                        speedControl02.setText("SLOWDOWN!!!");
+                        speedControl01.setBackgroundColor(Color.RED);
+                        speedControl02.setBackgroundColor(Color.RED);
+                    }
+
+                    lastHeadRotY=headRotY;
+                    lastHeadRotZ=headRotZ;
+                }
+            }
+        });
+
+        if(target_distanceTopic.getSubcriber_float() < 0.25){
+            if(!isShowingMsg){
+                isShowingMsg=true;
+                timeMeasurement=System.currentTimeMillis()-timeMeasurement;
+                float testTime=((float)timeMeasurement)/1000.f;
+                DecimalFormat df = new DecimalFormat("#.##");
+                df.setRoundingMode(RoundingMode.FLOOR);
+                final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setMessage("CONGRATS").setTitle("You have reached the goal in " + df.format(testTime) + "s!");
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        AlertDialog dialog = builder.create();
+                        dialog.show();
+                    }
+                });
+                if(isRecording){
+                    user_measuresTopic.setPublisher_linear(new float[]{Integer.parseInt(userNumber), NAV_INTERFACE, 0});
+                    user_measuresTopic.setPublisher_angular(new float[]{testTime, 0, 0});//precision?
+                    user_measuresTopic.publishNow();
+                }
+            }
+        }
 
         if(NAV_INTERFACE == INTERFACE_01){
 
