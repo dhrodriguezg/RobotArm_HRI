@@ -384,7 +384,7 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
 
         endeffector_navTopic.setPublisher_linear(new float[]{endeffector_axisX, endeffector_axisY, endeffector_axisZ});
         endeffector_navTopic.setPublisher_angular(new float[]{endeffector_axisRX, endeffector_axisRY, endeffector_axisRZ});
-        endeffector_navTopic.publishNow();
+        endeffector_navTopic.publishNow() ;
         endeffector_graspTopic.setPublisher_float(endeffector_grasp);
         endeffector_graspTopic.publishNow();
 
