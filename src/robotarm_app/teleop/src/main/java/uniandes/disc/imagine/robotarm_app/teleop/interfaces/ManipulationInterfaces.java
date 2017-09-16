@@ -1,11 +1,13 @@
 package uniandes.disc.imagine.robotarm_app.teleop.interfaces;
 
+import android.app.AlertDialog;
 import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -23,7 +25,9 @@ import org.ros.android.view.RosImageView;
 import org.ros.node.NodeConfiguration;
 import org.ros.node.NodeMainExecutor;
 
+import java.math.RoundingMode;
 import java.net.URI;
+import java.text.DecimalFormat;
 
 import sensor_msgs.CompressedImage;
 import uniandes.disc.imagine.robotarm_app.teleop.MainActivity;
@@ -63,27 +67,41 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
     private TextView virtualJoystickTitle01;
     private TextView virtualJoystickTitle02;
     private TextView scrollerTitle;
+    private TextView messageView;
 
     private AndroidNode androidNode;
     private Float32Topic endeffector_graspTopic;
     private TwistTopic endeffector_navTopic;
+    private TwistTopic user_measuresTopic;
     private Int32Topic endeffector_presetTopic;
     private Int32Topic camera_selectionTopic;
     private Int32Topic interface_numberTopic;
+    private Float32Topic target_distanceTopic;
 
     private UDPComm udpCommCommand;
     private MjpegView mjpegView;
     private boolean isRunning = true;
+    private boolean isShowingMsg = false;
+    private boolean isRecording = false;
+    private long timeMeasurement;
+    private String userNumber;
 
     private static final float NS2S = 1.0f / 1000000000.0f;
     private static final float MS2S = 1.0f / 1000.0f;
     private static final float MAXRADSPS = 20.f / 57.3f ; //10 degrees per second
-    private float headRotZ, headRotY;
-    private float nanotimestamp;
+    private float deviceRotX, deviceRotY, deviceRotZ;
+    private float deviceAccX, deviceAccY, deviceAccZ;
+    private float prev_deviceAccX, prev_deviceAccY, prev_deviceAccZ;
+    private float ref_deviceRotX, ref_deviceRotY, ref_deviceRotZ;
+    private float ref_deviceAccX, ref_deviceAccY, ref_deviceAccZ;
+    private boolean firstPress=true;
+
+    private float nanotimestamp_gyro;
+    private float nanotimestamp_acce;
     private int datarate = 20;
 
     private SensorManager sensorManager;
-    private Sensor gyroscope;
+    private Sensor gyroscope, accelerometer;
 
     private int MAN_INTERFACE;
     private int INTERFACE_01;
@@ -103,15 +121,21 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
         INTERFACE_02 = Integer.parseInt(getString(R.string.interface_manipulation_02_number));
         INTERFACE_03 = Integer.parseInt(getString(R.string.interface_manipulation_03_number));
 
-        headRotZ = 0.f;
-        headRotY = 0.f;
+        deviceRotX = 0.f; deviceRotY = 0.f; deviceRotZ = 0.f;
+        deviceAccX = 0.f; deviceAccY = 0.f; deviceAccZ = 0.f;
+        ref_deviceRotX = 0.f; ref_deviceRotY = 0.f; ref_deviceRotZ = 0.f;
+        ref_deviceAccX = 0.f; ref_deviceAccY = 0.f; ref_deviceAccZ = 0.f;
+        prev_deviceAccX = 0.f; prev_deviceAccY = 0.f; prev_deviceAccZ = 0.f;
 
         if (MainActivity.PREFERENCES.containsKey((getString(R.string.manipulation01))))
-            MAN_INTERFACE =INTERFACE_01;
+            MAN_INTERFACE = INTERFACE_01;
         if (MainActivity.PREFERENCES.containsKey((getString(R.string.manipulation02))))
-            MAN_INTERFACE =INTERFACE_02;
+            MAN_INTERFACE = INTERFACE_02;
         if (MainActivity.PREFERENCES.containsKey((getString(R.string.manipulation03))))
-            MAN_INTERFACE =INTERFACE_03;
+            MAN_INTERFACE = INTERFACE_03;
+
+        isRecording=MainActivity.PREFERENCES.containsKey((getString(R.string.record)));
+        userNumber=MainActivity.PREFERENCES.getProperty(getString(R.string.user));
 
         //Intent intent = getIntent();
         setContentView(R.layout.manipulation_interfaces);
@@ -131,6 +155,7 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
         nodeMainVirtualJoystick01 = (CustomVirtualJoystickView) findViewById(R.id.virtual_joystick_01);
         nodeMainVirtualJoystick02 = (CustomVirtualJoystickView) findViewById(R.id.virtual_joystick_02);
         scroller = (ScrollerView) findViewById(R.id.scrollerView);
+        messageView = (TextView) findViewById(R.id.textViewMessage);
 
         toggleStart = (ToggleButton) findViewById(R.id.toggleStart);
         toggleCamera1 = (ToggleButton) findViewById(R.id.toggleCamera1);
@@ -179,23 +204,63 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
         if (MAN_INTERFACE ==INTERFACE_03){
 
             nodeMainVirtualJoystick01.setVisibility(View.GONE);
-            nodeMainVirtualJoystick02.setVisibility(View.GONE);
+            //nodeMainVirtualJoystick02.setVisibility(View.INVISIBLE);
             virtualJoystickTitle01.setVisibility(View.GONE);
             virtualJoystickTitle02.setVisibility(View.GONE);
 
+            nodeMainVirtualJoystick02.setHolonomic(true);
+            nodeMainVirtualJoystick02.setVisibility(View.VISIBLE);
+            virtualJoystickTitle02.setVisibility(View.VISIBLE);
+
             sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
             gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+            accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
             sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_FASTEST);
-            scroller.setTopValue(-1.f);
-            scroller.setBottomValue(1.f);
+            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
+            scrollerTitle.setVisibility(View.VISIBLE);
+            scroller.setVisibility(View.VISIBLE);
+            scroller.setTopValue(0.f);
+            scroller.setBottomValue(0.1f);
             scroller.setFontSize(13);
             scroller.setMaxTotalItems(3);
             scroller.setMaxVisibleItems(3);
-            scroller.beginAtMiddle();
-            scroller.resetOnRelease();
-            scroller.setVisibility(View.VISIBLE);
-            scrollerTitle.setVisibility(View.VISIBLE);
+            scroller.beginAtTop();
+
+            if ( MainActivity.PREFERENCES.containsKey((getString(R.string.ros_cimage))) ) {
+                standardGestureDetector = new StandardGestureDetector(this, nodeMainImageStream);
+            }else if( MainActivity.PREFERENCES.containsKey((getString(R.string.mjpeg))) ){
+                standardGestureDetector = new StandardGestureDetector(this, mjpegView);
+            }
         }
+
+        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        toggleStart.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
+                if (isChecked) {
+                    timeMeasurement=System.currentTimeMillis();
+                } else {
+                    toggleStart.setVisibility(View.INVISIBLE);
+                    timeMeasurement=System.currentTimeMillis()-timeMeasurement;
+                    float testTime=((float)timeMeasurement)/1000.f;
+                    DecimalFormat df = new DecimalFormat("#.####");
+                    df.setRoundingMode(RoundingMode.FLOOR);
+                    builder.setMessage("CONGRATS").setTitle("You have completed the task in " + df.format(testTime) + "s!");
+                    AlertDialog dialog = builder.create();
+                    if(isRecording)
+                        dialog.show();
+                    else
+                        userNumber="-1";
+                    user_measuresTopic.setPublisher_linear(new float[]{Integer.parseInt(userNumber), MAN_INTERFACE, 0});
+                    user_measuresTopic.setPublisher_angular(new float[]{testTime, 0, 0});//precision?
+                    user_measuresTopic.publishNow();
+                }
+            }
+        });
+
+        user_measuresTopic = new TwistTopic();
+        user_measuresTopic.publishTo(getString(R.string.topic_user_measures), false, 10);
+        user_measuresTopic.setPublishingFreq(10);
 
         endeffector_navTopic =  new TwistTopic();
         endeffector_navTopic.publishTo(getString(R.string.topic_r_arm_nav), false, 10);
@@ -224,10 +289,14 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
         interface_numberTopic.setPublisher_int(MAN_INTERFACE);
         interface_numberTopic.publishNow();
 
+        target_distanceTopic = new Float32Topic();
+        target_distanceTopic.subscribeTo(getString(R.string.topic_target_distance));
+        target_distanceTopic.setSubcriber_float(Float.MAX_VALUE);
+
         androidNode.addTopics(camera_selectionTopic, interface_numberTopic, endeffector_presetTopic);
 
         if ( MainActivity.PREFERENCES.containsKey((getString(R.string.tcp))) )
-            androidNode.addTopics(endeffector_navTopic, endeffector_graspTopic);
+            androidNode.addTopics(endeffector_navTopic, endeffector_graspTopic, target_distanceTopic, user_measuresTopic);
         else if ( MainActivity.PREFERENCES.containsKey((getString(R.string.udp))) )
             udpCommCommand = new UDPComm( MainActivity.PREFERENCES.getProperty( getString(R.string.MASTER) ) , Integer.parseInt(getString(R.string.udp_port)));
 
@@ -245,7 +314,7 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
                     toggleCamera2.setChecked(false);
                     camera_selectionTopic.setPublisher_int(1);
                     camera_selectionTopic.publishNow();
-                }else if( !toggleCamera2.isChecked() ){
+                } else if (!toggleCamera2.isChecked()) {
                     toggleCamera1.setChecked(true);
                 }
             }
@@ -258,7 +327,7 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
                     toggleCamera1.setChecked(false);
                     camera_selectionTopic.setPublisher_int(2);
                     camera_selectionTopic.publishNow();
-                }else if( !toggleCamera1.isChecked() ){
+                } else if (!toggleCamera1.isChecked()) {
                     toggleCamera2.setChecked(true);
                 }
             }
@@ -279,6 +348,31 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
             }
         });
 
+        if(isRecording){
+            try{
+                Integer.parseInt(userNumber);
+            }catch (Exception e){
+                builder.setMessage("Go back and write User's #").setTitle("User's Number not well defined");
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        AlertDialog dialog = builder.create();
+                        dialog.show();
+                    }
+                });
+                Thread exitActivity = new Thread(){
+                    public void run(){
+                        try {
+                            Thread.sleep(3000);
+                            finish();
+                        } catch (InterruptedException e) {
+                            e.getStackTrace();
+                        }
+                    }
+                };
+                exitActivity.start();
+            }
+        }
+
         Thread threadGestures = new Thread(){
             public void run(){
                 if ( MainActivity.PREFERENCES.containsKey((getString(R.string.mjpeg))) )
@@ -294,20 +388,41 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
             }
         };
         threadGestures.start();
+
+        Thread thread = new Thread(){
+            public void run(){
+
+                while(isRunning){
+                    try {
+                        Thread.sleep(300);
+                        Log.i("IMUrx", "rx:" + (deviceAccX));
+                        Log.i("IMUry", "ry:" + (deviceAccY));
+                        Log.i("IMUrz", "rz:" + (deviceAccZ));
+                    } catch (InterruptedException e) {
+                        e.getStackTrace();
+                    }
+                }
+            }
+        };
+        //thread.start();
+
     }
 
     @Override
     public void onResume() {
         super.onResume();
         isRunning =true;
-        if (MAN_INTERFACE ==INTERFACE_03)
+        if (MAN_INTERFACE == INTERFACE_03){
             sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_FASTEST);
+            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        }
+
     }
 
     @Override
     protected void onPause() {
         mjpegView.stopPlayback();
-        if (MAN_INTERFACE ==INTERFACE_03)
+        if (MAN_INTERFACE == INTERFACE_03)
             sensorManager.unregisterListener(this);
         super.onPause();
     }
@@ -351,6 +466,14 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
 
         final float dT = datarate*MS2S;
 
+        runOnUiThread(new Runnable() {
+            public void run() {
+                DecimalFormat df = new DecimalFormat("#.####");
+                df.setRoundingMode(RoundingMode.FLOOR);
+                messageView.setText("Goal at: " + df.format(target_distanceTopic.getSubcriber_float())+ "m");
+                }
+        });
+
         if(MAN_INTERFACE == INTERFACE_01){
             runOnUiThread(new Runnable() {
                 public void run() {
@@ -364,15 +487,27 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
             endeffector_grasp = scroller.getValue();
         }
         if(MAN_INTERFACE == INTERFACE_02){
-            endeffector_axisX = standardGestureDetector.getTwoFingerDragX()/2.f;
-            endeffector_axisY = -standardGestureDetector.getTwoFingerDragY()/2.f;
-            endeffector_axisZ = standardGestureDetector.getThreeFingerDragY()/2.f;
+            endeffector_axisX = -standardGestureDetector.getTwoFingerDragY()/2.f;
+            endeffector_axisY = -standardGestureDetector.getTwoFingerDragX()/2.f;
+            endeffector_axisZ = -standardGestureDetector.getThreeFingerDragY()/2.f;
             endeffector_axisRY = -standardGestureDetector.getTwoFingerRotation()/180.f;
             endeffector_grasp = (1.f-standardGestureDetector.getTwoFingerPinch())/10.f;
 
         }
         if(MAN_INTERFACE == INTERFACE_03){
-            //...
+            runOnUiThread(new Runnable() {
+                public void run() {
+                    scroller.updateView();
+                }
+            });
+            if(standardGestureDetector.isDetectingOneFingerGesture()){
+                endeffector_axisX = ( deviceRotY - ref_deviceRotY )/2.f;//ok
+                endeffector_axisY = ( ref_deviceRotX - deviceRotX )/2.f; //ok
+                endeffector_axisRY = ( ref_deviceRotZ - deviceRotZ )*2.f;//ok
+            }
+            //endeffector_axisRY= nodeMainVirtualJoystick02.getAxisY();
+            endeffector_axisZ = nodeMainVirtualJoystick02.getAxisX()/4.f;
+            endeffector_grasp = scroller.getValue();
         }
 
         if(Math.abs(endeffector_axisX) < 0.01f)
@@ -401,26 +536,53 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
 
         if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
 
-            if (nanotimestamp != 0) {
-                final float dT = (event.timestamp - nanotimestamp) * NS2S;
-                float axisZ = event.values[0] * dT;
+            if (nanotimestamp_gyro != 0) {
+                final float dT = (event.timestamp - nanotimestamp_gyro) * NS2S;
+                float axisX = event.values[0] * dT;
                 float axisY = event.values[1] * dT;
+                float axisZ = event.values[2] * dT;
 
+                if(Math.abs(axisX) < 0.001)
+                    axisX=0.0f;
                 if(Math.abs(axisY) < 0.001)
                     axisY=0.0f;
                 if(Math.abs(axisZ) < 0.001)
                     axisZ=0.0f;
 
-                headRotY += axisY;
-                headRotZ += axisZ;
+                deviceRotX += axisX;
+                deviceRotY += axisY;
+                deviceRotZ += axisZ;
             }
-            nanotimestamp = event.timestamp;
+            nanotimestamp_gyro = event.timestamp;
         }
 
-        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-            float x = event.values[0];
-            float y = event.values[1];
-            float z = event.values[2];
+        if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
+
+            if (nanotimestamp_acce != 0) {
+                final float dT = (event.timestamp - nanotimestamp_acce) * NS2S;
+                float axisX = event.values[0];
+                float axisY = event.values[1];
+                float axisZ = event.values[2];
+
+                deviceAccX += 10000*axisX*dT*dT;
+                deviceAccY += 10000*axisY*dT*dT;
+                deviceAccZ += 10000*axisZ*dT*dT;
+
+                //deviceAccX += 1000000*axisX*dT*dT;
+                //deviceAccY += 1000000*axisY*dT*dT;
+                //deviceAccZ += 1000000*axisZ*dT*dT;
+            }
+            nanotimestamp_acce = event.timestamp;
+        }
+
+        if(standardGestureDetector.isDetectingOneFingerGesture()){
+            if(firstPress){
+                ref_deviceRotX = deviceRotX; ref_deviceRotY = deviceRotY; ref_deviceRotZ = deviceRotZ;
+                ref_deviceAccX = deviceAccX; ref_deviceAccY = deviceAccY; ref_deviceAccZ = deviceAccZ;
+                firstPress=false;
+            }
+        }else{
+            firstPress=true;
         }
     }
 

@@ -207,8 +207,9 @@ public class StandardGestureDetector extends GestureDetector.SimpleOnGestureList
 
     @Override
     public void onLongPress(MotionEvent event) {
-        twoFingerDragX = event.getX();
-        twoFingerDragY = event.getY();
+        detectingOneFingerGesture = true;
+        oneFingerDragX = event.getX();
+        oneFingerDragY = event.getY();
         vibrator.vibrate(200);
     }
 

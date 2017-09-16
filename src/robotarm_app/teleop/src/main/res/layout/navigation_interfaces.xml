@@ -116,7 +116,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textAppearance="?android:attr/textAppearanceLarge"
-            android:textOn="@string/text_togglebuttonOn"
+            android:textOn="@string/text_togglebuttonEnd"
             android:textOff="@string/text_togglebuttonOff"
             android:id="@+id/toggleStart"
             android:layout_alignParentBottom="true"

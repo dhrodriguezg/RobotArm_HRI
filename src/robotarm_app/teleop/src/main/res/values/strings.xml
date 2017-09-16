@@ -85,10 +85,10 @@
     <string name="interfaces_manipulation">Manipulation:</string>
     <string name="interface_navigation_01">a. On-Screen Joys</string>
     <string name="interface_navigation_02">b. Gestures</string>
-    <string name="interface_navigation_03">c. Tilt</string>
+    <string name="interface_navigation_03">c. IMU</string>
     <string name="interface_manipulation_01">a. On-Screen Joys</string>
     <string name="interface_manipulation_02">b. Gestures</string>
-    <string name="interface_manipulation_03">c. Tilt</string>
+    <string name="interface_manipulation_03">c. IMU</string>
 
     <!-- NAVIGATION ACTIVITY TEXT -->
     <string name="text_virtualjoystick01">Navigation</string>
@@ -97,6 +97,7 @@
     <string name="text_button1">Reset Camera</string>
     <string name="text_togglebuttonOn">Press to pause</string>
     <string name="text_togglebuttonOff">Press to START</string>
+    <string name="text_togglebuttonEnd">Press to FINISH</string>
 
     <!-- MANIPULATION ACTIVITY TEXT -->
     <string name="text_virtualjoystickMan01">Circle Navigation</string>

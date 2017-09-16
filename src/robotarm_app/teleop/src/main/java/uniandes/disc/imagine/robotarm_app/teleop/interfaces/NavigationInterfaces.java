@@ -13,6 +13,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.ToggleButton;
@@ -78,9 +79,10 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
     private UDPComm udpCommCommand;
     private MjpegView mjpegView;
     private boolean isRunning = true;
-    private boolean isShowingMsg = false;
+    private boolean isGoalReached = false;
     private boolean isRecording = false;
     private long timeMeasurement;
+    private long firstTimeMeasurement;
     private String userNumber;
 
     private static final float NS2S = 1.0f / 1000000000.0f;
@@ -221,11 +223,29 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
             }
         });
 
-        toggleStart.setOnClickListener(new View.OnClickListener() {
+        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        toggleStart.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
-            public void onClick(View v) {
-                toggleStart.setVisibility(View.INVISIBLE);
-                timeMeasurement=System.currentTimeMillis();
+            public void onCheckedChanged(CompoundButton toggleButton, boolean isChecked) {
+                if (isChecked) {
+                    timeMeasurement = System.currentTimeMillis();
+                } else {
+                    toggleStart.setVisibility(View.INVISIBLE);
+                    timeMeasurement = System.currentTimeMillis() - timeMeasurement;
+                    float goalTime = ((float) firstTimeMeasurement) / 1000.f;
+                    float testTime = ((float) timeMeasurement) / 1000.f;
+                    DecimalFormat df = new DecimalFormat("#.####");
+                    df.setRoundingMode(RoundingMode.FLOOR);
+                    builder.setMessage("CONGRATS").setTitle("You have completed the task in " + df.format(testTime) + "s!");
+                    AlertDialog dialog = builder.create();
+                    if (isRecording)
+                        dialog.show();
+                    else
+                        userNumber = "-1";
+                    user_measuresTopic.setPublisher_linear(new float[]{Integer.parseInt(userNumber), NAV_INTERFACE, 0});
+                    user_measuresTopic.setPublisher_angular(new float[]{testTime, goalTime, 0});//precision?
+                    user_measuresTopic.publishNow();
+                }
             }
         });
 
@@ -276,7 +296,6 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
             try{
                 Integer.parseInt(userNumber);
             }catch (Exception e){
-                final AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setMessage("Go back and write User's #").setTitle("User's Number not well defined");
                 runOnUiThread(new Runnable() {
                     public void run() {
@@ -284,6 +303,17 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
                         dialog.show();
                     }
                 });
+                Thread exitActivity = new Thread(){
+                    public void run(){
+                        try {
+                            Thread.sleep(3000);
+                            finish();
+                        } catch (InterruptedException e) {
+                            e.getStackTrace();
+                        }
+                    }
+                };
+                exitActivity.start();
             }
         }
 
@@ -366,7 +396,7 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
 
         runOnUiThread(new Runnable() {
             public void run() {
-                DecimalFormat df = new DecimalFormat("#.##");
+                DecimalFormat df = new DecimalFormat("#.####");
                 df.setRoundingMode(RoundingMode.FLOOR);
                 messageView.setText("Goal at: " + df.format(target_distanceTopic.getSubcriber_float())+ "m");
                 speedControlCounter++;
@@ -402,25 +432,9 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
         });
 
         if(target_distanceTopic.getSubcriber_float() < 0.25){
-            if(!isShowingMsg){
-                isShowingMsg=true;
-                timeMeasurement=System.currentTimeMillis()-timeMeasurement;
-                float testTime=((float)timeMeasurement)/1000.f;
-                DecimalFormat df = new DecimalFormat("#.##");
-                df.setRoundingMode(RoundingMode.FLOOR);
-                final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setMessage("CONGRATS").setTitle("You have reached the goal in " + df.format(testTime) + "s!");
-                runOnUiThread(new Runnable() {
-                    public void run() {
-                        AlertDialog dialog = builder.create();
-                        dialog.show();
-                    }
-                });
-                if(isRecording){
-                    user_measuresTopic.setPublisher_linear(new float[]{Integer.parseInt(userNumber), NAV_INTERFACE, 0});
-                    user_measuresTopic.setPublisher_angular(new float[]{testTime, 0, 0});//precision?
-                    user_measuresTopic.publishNow();
-                }
+            if(!isGoalReached){
+                isGoalReached =true;
+                firstTimeMeasurement = System.currentTimeMillis() - timeMeasurement;
             }
         }
 

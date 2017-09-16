@@ -106,8 +106,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/interface_manipulation_03"
                 android:id="@+id/manipulation03"
-                android:checked="false"
-                android:enabled="false" />
+                android:checked="false" />
         </RadioGroup>
 
         <ImageView

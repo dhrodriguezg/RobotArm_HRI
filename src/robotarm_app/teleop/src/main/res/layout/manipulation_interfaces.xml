@@ -155,11 +155,21 @@
             android:layout_marginLeft="10dp"
             android:layout_marginTop="10dp" />
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:text=""
+            android:id="@+id/textViewMessage"
+            android:layout_below="@+id/toggleCamera2"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="5dp" />
+
         <ToggleButton
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textAppearance="?android:attr/textAppearanceLarge"
-            android:textOn="@string/text_togglebuttonOn"
+            android:textOn="@string/text_togglebuttonEnd"
             android:textOff="@string/text_togglebuttonOff"
             android:id="@+id/toggleStart"
             android:layout_alignParentBottom="true"
