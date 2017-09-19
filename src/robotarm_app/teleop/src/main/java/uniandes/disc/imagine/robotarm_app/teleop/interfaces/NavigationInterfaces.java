@@ -454,9 +454,6 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
             robot_axisX = -navigationGesturesDetector.getOneFingerDragY();
             robot_axisRZ = -navigationGesturesDetector.getOneFingerDragX();
 
-            if(robot_axisX<0)
-                robot_axisRZ=-robot_axisRZ;
-
             headRotY -= (navigationGesturesDetector.getThreeFingerDragY()*dT*MAXRADSPS);
             headRotZ += (navigationGesturesDetector.getThreeFingerDragX()*dT*MAXRADSPS);
             head_axisRY = headRotY;
@@ -474,7 +471,7 @@ public class NavigationInterfaces extends RosActivity implements SensorEventList
             head_axisRZ= headRotZ;
         }
 
-        if(Math.abs(robot_axisX) < 0.01f)
+        if(Math.abs(robot_axisX) < 0.05f)
             robot_axisX=0.f;
         if(Math.abs(robot_axisY) < 0.01f)
             robot_axisY=0.f;

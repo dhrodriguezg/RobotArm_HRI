@@ -487,8 +487,10 @@ public class ManipulationInterfaces extends RosActivity implements SensorEventLi
             endeffector_grasp = scroller.getValue();
         }
         if(MAN_INTERFACE == INTERFACE_02){
-            endeffector_axisX = -standardGestureDetector.getTwoFingerDragY()/2.f;
-            endeffector_axisY = -standardGestureDetector.getTwoFingerDragX()/2.f;
+            //endeffector_axisX = -standardGestureDetector.getTwoFingerDragY()/2.f;
+            //endeffector_axisY = -standardGestureDetector.getTwoFingerDragX()/2.f;
+            endeffector_axisX = -standardGestureDetector.getOneFingerDragY()/2.f;
+            endeffector_axisY = -standardGestureDetector.getOneFingerDragX()/2.f;
             endeffector_axisZ = -standardGestureDetector.getThreeFingerDragY()/2.f;
             endeffector_axisRY = -standardGestureDetector.getTwoFingerRotation()/180.f;
             endeffector_grasp = (1.f-standardGestureDetector.getTwoFingerPinch())/10.f;
